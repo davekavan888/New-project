@@ -1,6 +1,6 @@
 /**
  * Free-first live/delayed data.
- * Priority: Twelve Data (VITE_TWELVEDATA_KEY) → Yahoo → demo
+ * Priority: /api/market (Twelve Data server proxy) → Yahoo → demo
  */
 
 import type { Bar } from './indicators'
@@ -20,8 +20,6 @@ export type FIIDIIRow = {
   dii: number
 }
 
-const TD_KEY = import.meta.env.VITE_TWELVEDATA_KEY as string | undefined
-
 function demoBars(base: number, n = 80): Bar[] {
   const bars: Bar[] = []
   let p = base
@@ -38,27 +36,30 @@ function demoBars(base: number, n = 80): Bar[] {
   return bars
 }
 
-/** Twelve Data time series */
-async function twelveBars(symbol: string): Promise<Bar[] | null> {
-  if (!TD_KEY) return null
+function parseTwelve(json: unknown): Bar[] | null {
+  const j = json as { status?: string; values?: { datetime: string; open: string; high: string; low: string; close: string; volume?: string }[] }
+  if (!j?.values || j.status === 'error') return null
+  const values = [...j.values].reverse()
+  const bars: Bar[] = values.map((v) => ({
+    t: new Date(v.datetime).getTime(),
+    o: Number(v.open),
+    h: Number(v.high),
+    l: Number(v.low),
+    c: Number(v.close),
+    v: v.volume ? Number(v.volume) : undefined,
+  }))
+  return bars.length > 10 ? bars : null
+}
+
+/** Call our Vercel serverless proxy */
+async function proxyBars(symbol: string): Promise<Bar[] | null> {
   try {
-    const url =
-      `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}` +
-      `&interval=1day&outputsize=90&apikey=${TD_KEY}`
+    const url = `/api/market?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=90`
     const res = await fetch(url)
     if (!res.ok) return null
     const json = await res.json()
-    if (json?.status === 'error' || !json?.values) return null
-    const values = [...json.values].reverse()
-    const bars: Bar[] = values.map((v: { datetime: string; open: string; high: string; low: string; close: string; volume?: string }) => ({
-      t: new Date(v.datetime).getTime(),
-      o: Number(v.open),
-      h: Number(v.high),
-      l: Number(v.low),
-      c: Number(v.close),
-      v: v.volume ? Number(v.volume) : undefined,
-    }))
-    return bars.length > 10 ? bars : null
+    if (json?.error) return null
+    return parseTwelve(json)
   } catch {
     return null
   }
@@ -94,12 +95,14 @@ async function yahooChart(symbol: string): Promise<Bar[] | null> {
 }
 
 async function resolveBars(
-  twelveSymbol: string,
+  candidates: string[],
   yahooSymbol: string,
   demoBase: number,
 ): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
-  const td = await twelveBars(twelveSymbol)
-  if (td) return { bars: td, source: TD_KEY ? 'delayed' : 'delayed' }
+  for (const sym of candidates) {
+    const td = await proxyBars(sym)
+    if (td) return { bars: td, source: 'delayed' }
+  }
   const y = await yahooChart(yahooSymbol)
   if (y) return { bars: y, source: 'delayed' }
   return { bars: demoBars(demoBase), source: 'demo' }
@@ -107,23 +110,20 @@ async function resolveBars(
 
 export async function fetchIndexBars(kind: 'nifty' | 'sensex'): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
   if (kind === 'nifty') {
-    return resolveBars('NSEI', '^NSEI', 24500)
+    return resolveBars(['NSEI', 'NIFTY', 'NIFTY:INDEX'], '^NSEI', 24500)
   }
-  return resolveBars('BSESN', '^BSESN', 80000)
+  return resolveBars(['BSESN', 'SENSEX', 'SENSEX:INDEX'], '^BSESN', 80000)
 }
 
 export async function fetchStockBars(symbol: string): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
-  // Twelve often uses SYMBOL:NSE or RELIANCE.NSE — try both patterns via NSE suffix for Yahoo
-  const td = await twelveBars(`${symbol}:NSE`)
-  if (td) return { bars: td, source: 'delayed' }
-  const td2 = await twelveBars(symbol)
-  if (td2) return { bars: td2, source: 'delayed' }
-  const y = await yahooChart(`${symbol}.NS`)
-  if (y) return { bars: y, source: 'delayed' }
   const bases: Record<string, number> = {
-    RELIANCE: 2850, TCS: 4100, HDFCBANK: 1680, INFY: 1850, ICICIBANK: 1240, SBIN: 820,
+    RELIANCE: 2850, TCS: 4100, HDFCBANK: 1680, INFY: 1850, ICICIBANK: 1240, SBIN: 820, BANKNIFTY: 52000,
   }
-  return { bars: demoBars(bases[symbol] || 1000), source: 'demo' }
+  return resolveBars(
+    [`${symbol}:NSE`, symbol, `${symbol}.NSE`],
+    `${symbol}.NS`,
+    bases[symbol] || 1000,
+  )
 }
 
 export function quoteFromBars(
@@ -186,7 +186,3 @@ export const WATCHLIST_SYMBOLS = [
   { symbol: 'ICICIBANK', name: 'ICICI Bank' },
   { symbol: 'INFY', name: 'Infosys' },
 ] as const
-
-export function hasTwelveKey(): boolean {
-  return Boolean(TD_KEY && TD_KEY.length > 5)
-}
