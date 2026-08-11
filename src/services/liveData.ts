@@ -1,6 +1,5 @@
 /**
- * Free-first live/delayed data.
- * Priority: /api/market (Twelve Data server proxy) → Yahoo → demo
+ * Live/delayed data via /api/market (Twelve Data + Yahoo fallback on server)
  */
 
 import type { Bar } from './indicators'
@@ -20,6 +19,9 @@ export type FIIDIIRow = {
   dii: number
 }
 
+const cache = new Map<string, { bars: Bar[]; source: IndexQuote['source']; at: number }>()
+const CACHE_MS = 3 * 60 * 1000 // 3 minutes — OK for your use
+
 function demoBars(base: number, n = 80): Bar[] {
   const bars: Bar[] = []
   let p = base
@@ -30,13 +32,13 @@ function demoBars(base: number, n = 80): Bar[] {
     const c = p * (1 + (Math.random() - 0.48) * 0.012)
     const h = Math.max(o, c) * (1 + Math.random() * 0.004)
     const l = Math.min(o, c) * (1 - Math.random() * 0.004)
-    bars.push({ t: start + i * day, o, h, l, c, v: 1e6 + Math.random() * 1e6 })
+    bars.push({ t: start + i * day, o, h, l, c, v: 1e6 })
     p = c
   }
   return bars
 }
 
-function parseTwelve(json: unknown): Bar[] | null {
+function parseBars(json: unknown): Bar[] | null {
   const j = json as { status?: string; values?: { datetime: string; open: string; high: string; low: string; close: string; volume?: string }[] }
   if (!j?.values || j.status === 'error') return null
   const values = [...j.values].reverse()
@@ -48,82 +50,42 @@ function parseTwelve(json: unknown): Bar[] | null {
     c: Number(v.close),
     v: v.volume ? Number(v.volume) : undefined,
   }))
-  return bars.length > 10 ? bars : null
+  return bars.length > 5 ? bars : null
 }
 
-/** Call our Vercel serverless proxy */
-async function proxyBars(symbol: string): Promise<Bar[] | null> {
-  try {
-    const url = `/api/market?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=90`
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const json = await res.json()
-    if (json?.error) return null
-    return parseTwelve(json)
-  } catch {
-    return null
-  }
-}
+async function fetchBars(symbol: string, demoBase: number): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
+  const hit = cache.get(symbol)
+  if (hit && Date.now() - hit.at < CACHE_MS) return { bars: hit.bars, source: hit.source }
 
-async function yahooChart(symbol: string): Promise<Bar[] | null> {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=6mo`
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const json = await res.json()
-    const r = json?.chart?.result?.[0]
-    if (!r) return null
-    const ts: number[] = r.timestamp || []
-    const q = r.indicators?.quote?.[0]
-    if (!q) return null
-    const bars: Bar[] = []
-    for (let i = 0; i < ts.length; i++) {
-      if (q.close[i] == null) continue
-      bars.push({
-        t: ts[i] * 1000,
-        o: q.open[i] ?? q.close[i],
-        h: q.high[i] ?? q.close[i],
-        l: q.low[i] ?? q.close[i],
-        c: q.close[i],
-        v: q.volume?.[i],
-      })
+    const res = await fetch(`/api/market?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=90`)
+    if (res.ok) {
+      const json = await res.json()
+      const bars = parseBars(json)
+      if (bars) {
+        const source: IndexQuote['source'] = 'delayed'
+        cache.set(symbol, { bars, source, at: Date.now() })
+        return { bars, source }
+      }
     }
-    return bars.length > 10 ? bars : null
   } catch {
-    return null
+    /* demo */
   }
-}
-
-async function resolveBars(
-  candidates: string[],
-  yahooSymbol: string,
-  demoBase: number,
-): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
-  for (const sym of candidates) {
-    const td = await proxyBars(sym)
-    if (td) return { bars: td, source: 'delayed' }
-  }
-  const y = await yahooChart(yahooSymbol)
-  if (y) return { bars: y, source: 'delayed' }
-  return { bars: demoBars(demoBase), source: 'demo' }
+  const bars = demoBars(demoBase)
+  return { bars, source: 'demo' }
 }
 
 export async function fetchIndexBars(kind: 'nifty' | 'sensex'): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
-  if (kind === 'nifty') {
-    return resolveBars(['NSEI', 'NIFTY', 'NIFTY:INDEX'], '^NSEI', 24500)
-  }
-  return resolveBars(['BSESN', 'SENSEX', 'SENSEX:INDEX'], '^BSESN', 80000)
+  if (kind === 'nifty') return fetchBars('NSEI', 24500)
+  return fetchBars('BSESN', 80000)
 }
 
 export async function fetchStockBars(symbol: string): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
   const bases: Record<string, number> = {
     RELIANCE: 2850, TCS: 4100, HDFCBANK: 1680, INFY: 1850, ICICIBANK: 1240, SBIN: 820, BANKNIFTY: 52000,
   }
-  return resolveBars(
-    [`${symbol}:NSE`, symbol, `${symbol}.NSE`],
-    `${symbol}.NS`,
-    bases[symbol] || 1000,
-  )
+  // Prefer Yahoo-style via our API map: RELIANCE → RELIANCE.NS on server
+  return fetchBars(symbol, bases[symbol] || 1000)
 }
 
 export function quoteFromBars(
@@ -163,7 +125,7 @@ export async function fetchFIIDII(): Promise<{ rows: FIIDIIRow[]; source: string
       if (rows.length) return { rows, source: 'public-feed' }
     }
   } catch {
-    /* fallback */
+    /* demo */
   }
   return {
     source: 'demo',
@@ -173,8 +135,6 @@ export async function fetchFIIDII(): Promise<{ rows: FIIDIIRow[]; source: string
       { date: 'Wed', fii: 400, dii: 200 },
       { date: 'Thu', fii: 1500, dii: -300 },
       { date: 'Fri', fii: -200, dii: 900 },
-      { date: 'Mon', fii: 700, dii: 100 },
-      { date: 'Tue', fii: -1100, dii: 800 },
     ],
   }
 }
