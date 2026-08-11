@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Globe2, Briefcase, Star, Newspaper, Bot,
-  Filter, Settings, Building2, Calendar, Sparkles, Lightbulb, History,
+  Filter, Settings, Building2, Calendar, Sparkles, Lightbulb, History, Sunrise,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const items = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/morning', label: 'Morning Brief', icon: Sunrise },
   { to: '/hints', label: 'Next-Step Hints', icon: Lightbulb },
   { to: '/ideas', label: 'Suggested Ideas', icon: Sparkles },
   { to: '/analysis', label: 'Analysis Labs', icon: History },
@@ -28,7 +29,7 @@ export function Sidebar() {
       <div className="flex h-14 items-center gap-2 border-b border-zinc-800 px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-sm font-bold">O</div>
         <div>
-          <div className="text-sm font-semibold">ORIONIS</div>
+          <div className="text-sm font-semibold">Novaforge</div>
           <div className="text-[10px] text-zinc-500">Hints for Groww / IND Money</div>
         </div>
       </div>

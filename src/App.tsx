@@ -11,6 +11,7 @@ import { PortfolioPage } from '@/pages/portfolio/PortfolioPage'
 import { WatchlistPage } from '@/pages/portfolio/WatchlistPage'
 import { AICopilotPage } from '@/pages/ai/AICopilotPage'
 import { HintsPage } from '@/pages/HintsPage'
+import { MorningBriefPage } from '@/pages/MorningBriefPage'
 import { AnalysisPage } from '@/pages/AnalysisPage'
 import { IdeasPage } from '@/pages/IdeasPage'
 import {
@@ -37,6 +38,7 @@ export default function App() {
       >
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/hints" element={<HintsPage />} />
+        <Route path="/morning" element={<MorningBriefPage />} />
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/markets" element={<MarketsPage />} />
