@@ -12,6 +12,7 @@ import {
   type IndexQuote,
 } from '@/services/liveData'
 import { Button } from '@/components/ui/Button'
+import { MarketScoreWidget } from '@/pages/MarketPulsePages'
 
 export function DashboardPage() {
   const [indices, setIndices] = useState<IndexQuote[]>([])
@@ -137,6 +138,8 @@ export function DashboardPage() {
           </div>
         </Card>
 
+        <div className="space-y-4">
+        <MarketScoreWidget />
         <Card>
           <div className="mb-3 flex items-center gap-2 font-semibold">
             <Bot className="h-4 w-4 text-indigo-400" /> AI Briefing
@@ -149,6 +152,7 @@ export function DashboardPage() {
             Open Morning Brief →
           </Link>
         </Card>
+        </div>
       </div>
 
       <Card>

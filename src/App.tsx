@@ -22,6 +22,16 @@ import {
   CalendarPage,
   SettingsPage,
 } from '@/pages/SimplePages'
+import {
+  OptionsAnalyticsPage,
+  SmartMoneyPage,
+  BreadthPage,
+  SectorsPage,
+  ScannersAdvancedPage,
+  AlertsPage,
+  IPOPage,
+  PricingPage,
+} from '@/pages/MarketPulsePages'
 
 export default function App() {
   return (
@@ -41,6 +51,15 @@ export default function App() {
         <Route path="/morning" element={<MorningBriefPage />} />
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
+        <Route path="/options" element={<OptionsAnalyticsPage />} />
+        <Route path="/smart-money" element={<SmartMoneyPage />} />
+        <Route path="/breadth" element={<BreadthPage />} />
+        <Route path="/sectors" element={<SectorsPage />} />
+        <Route path="/scanners" element={<ScannersAdvancedPage />} />
+        <Route path="/screeners" element={<ScreenersPage />} />
+        <Route path="/alerts" element={<AlertsPage />} />
+        <Route path="/ipo" element={<IPOPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/markets" element={<MarketsPage />} />
         <Route path="/stocks/:symbol" element={<StockDetailsPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
@@ -48,7 +67,6 @@ export default function App() {
         <Route path="/news" element={<NewsPage />} />
         <Route path="/institutional" element={<InstitutionalPage />} />
         <Route path="/ai" element={<AICopilotPage />} />
-        <Route path="/screeners" element={<ScreenersPage />} />
         <Route path="/themes" element={<ThemesPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/settings" element={<SettingsPage />} />
