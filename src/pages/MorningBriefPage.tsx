@@ -19,6 +19,7 @@ import {
 } from '@/services/indicators'
 import { formatPercent, cn } from '@/lib/utils'
 import { Sunrise, RefreshCw, AlertTriangle, Shield } from 'lucide-react'
+import { DataHealthBadge, healthFromSource } from '@/components/DataHealthBadge'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 type StockPack = {
@@ -107,8 +108,11 @@ export function MorningBriefPage() {
             <Sunrise className="h-6 w-6 text-amber-400" />
             Morning Brief
           </h1>
-          <p className="text-sm text-zinc-400">
-            9:15–11 focus · Nifty/Sensex · FII/DII · 3 chart models · educational only
+          <p className="text-sm text-zinc-400 flex flex-wrap items-center gap-2">
+            9:15–11 focus · personal use
+            {nifty && (
+              <DataHealthBadge status={healthFromSource(nifty.source)} asOf={nifty.asOf} />
+            )}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>

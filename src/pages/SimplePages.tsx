@@ -429,9 +429,29 @@ export function SettingsPage() {
           <div className="text-sm font-medium">Risk reminder</div>
           <div className="text-xs text-zinc-500">Always set max loss before size. Educational product only.</div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-          Reload app
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            Reload app
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await fetch('/api/gate', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'logout' }),
+              })
+              window.location.href = '/'
+            }}
+          >
+            Lock site again
+          </Button>
+        </div>
+        <p className="text-[10px] text-zinc-500">
+          Personal mode: share only your access key with people you trust. This is not bank-grade encryption.
+        </p>
       </Card>
     </div>
   )
