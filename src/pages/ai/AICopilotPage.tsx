@@ -19,7 +19,7 @@ function offlineReply(q: string): string {
     return 'Educational sizing: decide max loss first (e.g. ₹1000). Risk per unit = |entry − stop|. Qty idea ≈ max loss / risk per unit. For options, risk is mainly premium paid (or defined margin). Never risk money you cannot afford. Not advice.'
   }
   if (lower.includes('tcs') || lower.includes('infosys')) {
-    return 'Educational compare frame: margins, growth, deal pipeline, valuation. Prefer the name that matches your horizon and risk budget. Confirm with live prices on Groww/IND Money. Not advice.'
+    return 'Educational compare frame: margins, growth, deal pipeline, valuation. Prefer the name that matches your horizon and risk budget. Confirm with live prices on your broker/your broker. Not advice.'
   }
   return 'AI key not connected yet. Add OPENAI_API_KEY on Vercel and Redeploy for live answers.\n\nMeanwhile: use Morning Brief for Nifty/Sensex, FII/DII and chart models. This is educational only — not investment advice.'
 }
@@ -29,7 +29,7 @@ export function AICopilotPage() {
     {
       role: 'assistant',
       content:
-        'Hello — Novaforge AI Copilot. Ask about Nifty, stocks, risk sizing, or sector structure. Educational only — not investment advice. You execute on Groww / IND Money.',
+        'Hello — Novaforge AI Copilot. Ask about Nifty, stocks, risk sizing, or sector structure. Educational only — not investment advice. You execute on your broker.',
     },
   ])
   const [input, setInput] = useState('')

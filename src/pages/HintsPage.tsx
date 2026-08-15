@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/Card'
 import { getTodayHints, FII_DII_RECENT, EXPIRY_STATS } from '@/services/analysis'
 import { Link } from 'react-router-dom'
-import { Lightbulb, ExternalLink, AlertTriangle } from 'lucide-react'
+import { Lightbulb, AlertTriangle } from 'lucide-react'
 
 export function HintsPage() {
   const hints = getTodayHints()
@@ -14,8 +14,7 @@ export function HintsPage() {
           Next-Step Hints
         </h1>
         <p className="text-sm text-zinc-400">
-          Decision support for trades you place on <span className="text-zinc-200">Groww</span> &{' '}
-          <span className="text-zinc-200">IND Money</span> — not order execution here.
+          Decision support for trades you place on <span className="text-zinc-200">your own broker platform</span> — not order execution here.
         </p>
       </div>
 
@@ -24,7 +23,7 @@ export function HintsPage() {
           <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
           <div className="text-sm text-zinc-300">
             <strong className="text-amber-200">Education / research only.</strong> No guaranteed returns.
-            ORIONIS does not place trades. You execute on Groww or IND Money at your own risk.
+            Novaforge does not place trades. You execute on your broker platform at your own risk.
           </div>
         </div>
       </Card>
@@ -62,20 +61,10 @@ export function HintsPage() {
       </div>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="font-semibold">Execute elsewhere</div>
-            <p className="text-sm text-zinc-400">Use hints here → place trades on your broker apps.</p>
-          </div>
-          <div className="flex gap-2 text-sm">
-            <span className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 px-3 py-2 text-zinc-300">
-              Groww <ExternalLink className="h-3 w-3" />
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 px-3 py-2 text-zinc-300">
-              IND Money <ExternalLink className="h-3 w-3" />
-            </span>
-          </div>
-        </div>
+        <div className="font-semibold">Execute on your broker</div>
+        <p className="text-sm text-zinc-400 mt-1">
+          Novaforge is research & decision support only. Place and manage orders on your own trading platform.
+        </p>
       </Card>
     </div>
   )

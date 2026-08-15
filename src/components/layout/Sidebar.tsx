@@ -27,10 +27,10 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-60 flex-col border-r border-zinc-800 bg-zinc-950/95 backdrop-blur">
       <div className="flex h-14 items-center gap-2 border-b border-zinc-800 px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-sm font-bold">O</div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-sm font-bold shadow-lg shadow-indigo-500/30">N</div>
         <div>
           <div className="text-sm font-semibold">Novaforge</div>
-          <div className="text-[10px] text-zinc-500">Hints for Groww / IND Money</div>
+          <div className="text-[10px] text-zinc-500">AI decision intelligence</div>
         </div>
       </div>
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">

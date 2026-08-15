@@ -34,7 +34,7 @@ export function AnalysisPage() {
           </ResponsiveContainer>
         </div>
         <p className="mt-3 text-sm text-zinc-400">
-          India-specific: FII selling with strong DII buying often creates choppy tape — useful context before Nifty/Bank Nifty options on Groww/IND Money.
+          India-specific: FII selling with strong DII buying often creates choppy tape — useful context before Nifty/Bank Nifty options on your broker/your broker.
         </p>
       </Card>
 

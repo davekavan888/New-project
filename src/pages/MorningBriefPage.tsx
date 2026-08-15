@@ -122,7 +122,7 @@ export function MorningBriefPage() {
           <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
           <div>
             <strong className="text-amber-200">Personal educational tool — not investment advice.</strong>
-            {' '}No guaranteed profit. Data may be delayed or demo if feeds fail. You place trades on Groww / IND Money.
+            {' '}No guaranteed profit. Data may be delayed or demo if feeds fail. You place trades on your broker.
           </div>
         </div>
       </Card>

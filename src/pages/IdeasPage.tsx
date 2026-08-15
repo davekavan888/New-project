@@ -16,7 +16,7 @@ export function IdeasPage() {
           Suggested Ideas
         </h1>
         <p className="text-sm text-zinc-400">
-          Watchlist-style ideas for Groww / IND Money — filters only, not buy recommendations.
+          Watchlist-style ideas — filters only, not buy recommendations.
         </p>
       </div>
 
@@ -71,7 +71,7 @@ export function IdeasPage() {
 
       <Card className="text-sm text-zinc-400">
         Lists are curated/illustrative for product demo. Connect fundamental data APIs later for live 52W, book value, and valuation screens.
-        Always cross-check on Groww or IND Money before any trade.
+        Always cross-check live prices and risk before any trade.
       </Card>
     </div>
   )
