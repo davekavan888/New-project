@@ -22,6 +22,7 @@ import {
   CalendarPage,
   SettingsPage,
 } from '@/pages/SimplePages'
+import { LiveTerminalPage } from '@/pages/workspace/LiveTerminalPage'
 import {
   OptionsAnalyticsPage,
   SmartMoneyPage,
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/morning" element={<MorningBriefPage />} />
         <Route path="/ideas" element={<IdeasPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
+        <Route path="/live" element={<LiveTerminalPage />} />
         <Route path="/options" element={<OptionsAnalyticsPage />} />
         <Route path="/smart-money" element={<SmartMoneyPage />} />
         <Route path="/breadth" element={<BreadthPage />} />

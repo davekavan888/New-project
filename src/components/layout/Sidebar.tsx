@@ -2,13 +2,14 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Globe2, Briefcase, Star, Newspaper, Bot,
   Filter, Settings, Building2, Calendar, Sparkles, Lightbulb, History, Sunrise,
-  Activity, Bell, Layers, Rocket, Wallet, TrendingUp, CreditCard,
+  Activity, Bell, Layers, Rocket, Wallet, TrendingUp, CreditCard, Radio,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const items = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/morning', label: 'Morning Brief', icon: Sunrise },
+  { to: '/live', label: 'Live Terminal', icon: Radio },
   { to: '/hints', label: 'Next-Step Hints', icon: Lightbulb },
   { to: '/ideas', label: 'Suggested Ideas', icon: Sparkles },
   { to: '/analysis', label: 'Analysis Labs', icon: History },
