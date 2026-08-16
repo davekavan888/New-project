@@ -1,6 +1,6 @@
 /**
- * Novaforge Angel Bridge — Express + Socket.IO broadcast to React
- * Deploy on a private VPS (Railway/Render/Fly/DigitalOcean). Not for Vercel serverless.
+ * Novaforge Angel Bridge — Express + Socket.IO
+ * Deploy on Railway/Render/VPS. Not for Vercel serverless.
  */
 import 'dotenv/config'
 import express from 'express'
@@ -12,31 +12,39 @@ import { refreshScripMaster, tokenForSymbol, loadScripMaster } from '../scrip/ma
 import { AngelFeed } from '../ws/angelFeed.js'
 import { directionFactors } from '../calc/metrics.js'
 
+// Railway sets PORT; domain may target 8787 — set PORT=8787 in Variables to match
 const PORT = Number(process.env.PORT || process.env.BRIDGE_PORT || 8787)
 const origin = process.env.CORS_ORIGIN || '*'
 
 const app = express()
-app.use(cors({ origin }))
+app.use(cors({ origin, credentials: true }))
 app.use(express.json())
 
 const httpServer = createServer(app)
-const io = new Server(httpServer, { cors: { origin } })
+const io = new Server(httpServer, { cors: { origin, credentials: true } })
 
 let latest: Record<string, unknown> = {
   status: 'starting',
   factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
 }
 
-app.get('/', (_req, res) =>
+app.get('/', (_req, res) => {
   res.json({
     service: 'novaforge-angel-bridge',
     ok: true,
     health: '/health',
     snapshot: '/snapshot',
-  }),
-)
-app.get('/health', (_req, res) => res.json({ ok: true, latestStatus: latest.status }))
-app.get('/snapshot', (_req, res) => res.json(latest))
+    port: PORT,
+  })
+})
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, latestStatus: latest.status, port: PORT })
+})
+
+app.get('/snapshot', (_req, res) => {
+  res.json(latest)
+})
 
 app.post('/admin/renew-session', async (_req, res) => {
   try {
@@ -61,63 +69,101 @@ io.on('connection', (socket) => {
   socket.on('heartbeat', () => socket.emit('heartbeat', { t: Date.now() }))
 })
 
+function startSimulated() {
+  setInterval(() => {
+    if (latest.status === 'live' || latest.status === 'session_ok') return
+    latest = {
+      status: 'simulated',
+      ltp: {
+        NIFTY: 24350 + Math.random() * 20,
+        BANKNIFTY: 51200 + Math.random() * 40,
+      },
+      factors: directionFactors({
+        technical: 50 + Math.random() * 20,
+        optionsFlow: 50 + Math.random() * 20,
+        breadth: 50 + Math.random() * 20,
+      }),
+      ts: Date.now(),
+      note: 'Simulated until Angel session succeeds',
+    }
+    io.emit('market', latest)
+  }, 3000)
+}
+
 async function boot() {
   try {
     try {
       await refreshScripMaster()
     } catch (e) {
       console.warn('Scrip refresh skipped', e)
-      loadScripMaster()
+      try {
+        loadScripMaster()
+      } catch {
+        /* empty */
+      }
+    }
+
+    const hasKeys =
+      process.env.ANGEL_API_KEY && process.env.ANGEL_CLIENT_CODE && process.env.ANGEL_PASSWORD
+
+    if (!hasKeys) {
+      latest = {
+        status: 'error',
+        error: 'Missing ANGEL_API_KEY / ANGEL_CLIENT_CODE / ANGEL_PASSWORD',
+        ts: Date.now(),
+      }
+      startSimulated()
+      return
     }
 
     const session = await getSession()
-    const symbols = (process.env.SUBSCRIBE_SYMBOLS || 'NIFTY,BANKNIFTY').split(',').map((s) => s.trim())
+    const symbols = (process.env.SUBSCRIBE_SYMBOLS || 'NIFTY,BANKNIFTY')
+      .split(',')
+      .map((s) => s.trim())
     const tokens = symbols.map(tokenForSymbol).filter(Boolean) as string[]
 
     latest = {
-      ...latest,
       status: 'session_ok',
       symbols,
       tokens,
       ts: Date.now(),
+      factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
     }
     io.emit('market', latest)
 
     if (tokens.length && process.env.ANGEL_API_KEY) {
-      const feed = new AngelFeed(session, process.env.ANGEL_API_KEY, (tick) => {
-        latest = {
-          status: 'live',
-          tick,
-          ts: Date.now(),
-          factors: directionFactors({ technical: 55, optionsFlow: 60, breadth: 56 }),
-        }
-        io.emit('market', latest)
-      })
-      feed.connect(tokens)
+      try {
+        const feed = new AngelFeed(session, process.env.ANGEL_API_KEY, (tick) => {
+          latest = {
+            status: 'live',
+            tick,
+            ts: Date.now(),
+            factors: directionFactors({ technical: 55, optionsFlow: 60, breadth: 56 }),
+          }
+          io.emit('market', latest)
+        })
+        feed.connect(tokens)
+      } catch (e) {
+        console.error('Feed connect failed', e)
+        latest = { ...latest, status: 'session_ok', feedError: String(e) }
+        startSimulated()
+      }
     } else {
-      console.warn('No tokens or API key — snapshot mode only')
-      // Demo pulse so UI can be developed without market hours
-      setInterval(() => {
-        latest = {
-          status: 'simulated',
-          ltp: { NIFTY: 24350 + Math.random() * 20, BANKNIFTY: 51200 + Math.random() * 40 },
-          factors: directionFactors({
-            technical: 50 + Math.random() * 20,
-            optionsFlow: 50 + Math.random() * 20,
-            breadth: 50 + Math.random() * 20,
-          }),
-          ts: Date.now(),
-        }
-        io.emit('market', latest)
-      }, 2000)
+      console.warn('No tokens mapped — simulated')
+      startSimulated()
     }
   } catch (e) {
     console.error('Boot error', e)
     latest = { status: 'error', error: String(e), ts: Date.now() }
+    startSimulated()
   }
 }
 
-httpServer.listen(PORT, () => {
-  console.log(`Novaforge Angel Bridge on :${PORT}`)
-  boot()
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`Novaforge Angel Bridge listening on 0.0.0.0:${PORT}`)
+  boot().catch((e) => {
+    console.error('boot fatal', e)
+    latest = { status: 'error', error: String(e), ts: Date.now() }
+    startSimulated()
+  })
 })
