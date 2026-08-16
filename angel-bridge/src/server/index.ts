@@ -12,7 +12,7 @@ import { refreshScripMaster, tokenForSymbol, loadScripMaster } from '../scrip/ma
 import { AngelFeed } from '../ws/angelFeed.js'
 import { directionFactors } from '../calc/metrics.js'
 
-const PORT = Number(process.env.BRIDGE_PORT || 8787)
+const PORT = Number(process.env.PORT || process.env.BRIDGE_PORT || 8787)
 const origin = process.env.CORS_ORIGIN || '*'
 
 const app = express()
@@ -27,6 +27,14 @@ let latest: Record<string, unknown> = {
   factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
 }
 
+app.get('/', (_req, res) =>
+  res.json({
+    service: 'novaforge-angel-bridge',
+    ok: true,
+    health: '/health',
+    snapshot: '/snapshot',
+  }),
+)
 app.get('/health', (_req, res) => res.json({ ok: true, latestStatus: latest.status }))
 app.get('/snapshot', (_req, res) => res.json(latest))
 
