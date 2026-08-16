@@ -2,7 +2,6 @@
  * Novaforge Angel Bridge — Express + Socket.IO
  * Deploy on Railway/Render/VPS. Not for Vercel serverless.
  */
-import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
@@ -44,6 +43,25 @@ app.get('/health', (_req, res) => {
 
 app.get('/snapshot', (_req, res) => {
   res.json(latest)
+})
+
+/** Safe: only shows whether keys exist, never values */
+app.get('/env-check', (_req, res) => {
+  const keys = [
+    'ANGEL_API_KEY',
+    'ANGEL_CLIENT_CODE',
+    'ANGEL_PASSWORD',
+    'ANGEL_TOTP_SECRET',
+    'CORS_ORIGIN',
+    'PORT',
+    'SUBSCRIBE_SYMBOLS',
+  ] as const
+  const report: Record<string, { present: boolean; length: number }> = {}
+  for (const k of keys) {
+    const v = process.env[k]
+    report[k] = { present: Boolean(v && String(v).trim()), length: v ? String(v).length : 0 }
+  }
+  res.json({ report, nodeEnv: process.env.NODE_ENV || null })
 })
 
 app.post('/admin/renew-session', async (_req, res) => {
