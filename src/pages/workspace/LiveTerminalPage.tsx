@@ -2,21 +2,31 @@ import { ModeToggle } from '@/components/workspace/ModeToggle'
 import { FactorModelCard } from '@/components/workspace/FactorModelCard'
 import { useWorkspaceMode } from '@/stores/workspaceMode'
 import { useAngelLiveFeed } from '@/hooks/useAngelLiveFeed'
+import { DataHealthBadge } from '@/components/DataHealthBadge'
 import { Card } from '@/components/ui/Card'
 import { cn } from '@/lib/utils'
 import { Activity, Radio } from 'lucide-react'
 
 const MACRO = [
-  { name: 'USD/INR', value: '83.42', chg: '+0.12%' },
-  { name: 'Crude (Brent)', value: '82.1', chg: '−0.4%' },
-  { name: 'US Futures', value: 'Mixed', chg: '—' },
-  { name: 'India 10Y', value: '6.82%', chg: '+1bp' },
+  { name: 'USD/INR', value: '—', chg: 'ref' },
+  { name: 'Crude', value: '—', chg: 'ref' },
+  { name: 'US Futures', value: '—', chg: 'ref' },
+  { name: 'India 10Y', value: '—', chg: 'ref' },
 ]
 
 export function LiveTerminalPage() {
   const { mode } = useWorkspaceMode()
   const { data, connected, bridgeConfigured, refreshSnapshot } = useAngelLiveFeed()
   const pro = mode === 'pro'
+  const ltp = (data.ltp || {}) as Record<string, number>
+  const health =
+    data.status === 'live'
+      ? 'live'
+      : data.status === 'session_ok'
+        ? 'delayed'
+        : data.status === 'simulated'
+          ? 'demo'
+          : 'unavailable'
 
   return (
     <div className={cn('space-y-4', pro && 'space-y-2 text-[13px]')}>
@@ -26,14 +36,15 @@ export function LiveTerminalPage() {
             <Activity className="h-5 w-5 text-indigo-400" />
             Live Terminal
           </h1>
-          <p className="text-xs text-zinc-500">
-            Retail vs Pro workspace · Angel bridge when configured
+          <p className="text-xs text-zinc-500 flex items-center gap-2 flex-wrap">
+            Angel bridge · REST LTP poll
+            <DataHealthBadge status={health} />
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs">
             <Radio className={cn('h-3.5 w-3.5', connected ? 'text-emerald-400' : 'text-zinc-600')} />
-            {bridgeConfigured ? (connected ? 'Bridge live' : 'Connecting…') : 'Bridge URL not set'}
+            {bridgeConfigured ? (connected ? 'Bridge connected' : 'Connecting…') : 'Set VITE_ANGEL_BRIDGE_URL'}
           </div>
           <ModeToggle />
         </div>
@@ -41,31 +52,38 @@ export function LiveTerminalPage() {
 
       {!bridgeConfigured && (
         <Card className="border-amber-500/20 bg-amber-500/5 text-sm text-zinc-300">
-          Set <code className="text-amber-200">VITE_ANGEL_BRIDGE_URL</code> on Vercel to your private Angel
-          bridge server. Until then, factor model shows structural defaults / simulated bridge pulses.
+          Set <code className="text-amber-200">VITE_ANGEL_BRIDGE_URL</code> on Vercel to your Railway bridge URL.
         </Card>
       )}
 
-      <div className={cn('grid gap-3', pro ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
-        <FactorModelCard factors={data.factors} />
-        <Card className={pro ? 'p-3' : ''}>
-          <div className="text-xs text-zinc-500 mb-2">Feed status</div>
-          <div className="font-semibold capitalize">{data.status || '—'}</div>
-          <div className="text-[10px] text-zinc-500 mt-1">ts: {data.ts ? new Date(data.ts).toLocaleTimeString() : '—'}</div>
-          {data.ltp && (
-            <div className="mt-3 space-y-1 text-sm">
-              {Object.entries(data.ltp).map(([k, v]) => (
-                <div key={k} className="flex justify-between">
-                  <span className="text-zinc-400">{k}</span>
-                  <span className="tabular-nums font-medium">{typeof v === 'number' ? v.toFixed(2) : v}</span>
-                </div>
-              ))}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {['NIFTY', 'BANKNIFTY'].map((sym) => (
+          <Card key={sym}>
+            <div className="text-xs text-zinc-500">{sym}</div>
+            <div className="text-2xl font-bold tabular-nums mt-1">
+              {ltp[sym] != null ? ltp[sym].toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}
             </div>
-          )}
-          <button onClick={refreshSnapshot} className="mt-3 text-xs text-indigo-400">
+            <div className="text-[10px] text-zinc-500 mt-1">{data.status || '—'}</div>
+          </Card>
+        ))}
+        <Card>
+          <div className="text-xs text-zinc-500">Feed</div>
+          <div className="text-lg font-semibold capitalize mt-1">{data.status}</div>
+          <div className="text-[10px] text-zinc-500">
+            {data.ts ? new Date(data.ts).toLocaleTimeString() : '—'}
+          </div>
+        </Card>
+        <Card>
+          <div className="text-xs text-zinc-500">Source</div>
+          <div className="text-sm mt-1">{String((data as { source?: string }).source || '—')}</div>
+          <button onClick={refreshSnapshot} className="mt-2 text-xs text-indigo-400">
             Refresh snapshot
           </button>
         </Card>
+      </div>
+
+      <div className={cn('grid gap-3', pro ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
+        <FactorModelCard factors={data.factors} />
         <Card className={cn(pro && 'p-3', pro && 'lg:col-span-2')}>
           <div className="text-xs text-zinc-500 mb-2">Global macro matrix</div>
           <div className={cn('grid gap-2', pro ? 'grid-cols-4' : 'grid-cols-2')}>
@@ -80,32 +98,17 @@ export function LiveTerminalPage() {
         </Card>
       </div>
 
-      {pro ? (
-        <div className="grid gap-2 lg:grid-cols-3">
-          <Card className="p-2 font-mono text-[11px] text-zinc-400 overflow-auto max-h-48">
-            <div className="text-zinc-500 mb-1">Raw tick / payload</div>
-            <pre className="whitespace-pre-wrap">{JSON.stringify(data.tick || data, null, 2).slice(0, 1200)}</pre>
-          </Card>
-          <Card className="p-3">
-            <div className="text-xs text-zinc-500">IV Skew / GEX</div>
-            <p className="text-sm text-zinc-300 mt-2">
-              Spec ready: wire option chain Greeks from Angel REST + bridge calc. Show skew chart (OTM put IV −
-              OTM call IV) and net GEX by strike when chain stream is active.
-            </p>
-          </Card>
-          <Card className="p-3">
-            <div className="text-xs text-zinc-500">Strategy builder</div>
-            <p className="text-sm text-zinc-300 mt-2">
-              Payoff diagrams for debit spreads / iron fly — add after chain LTP stream is stable.
-            </p>
-          </Card>
-        </div>
-      ) : (
+      {pro && (
+        <Card className="p-2 font-mono text-[11px] text-zinc-400 overflow-auto max-h-40">
+          <pre className="whitespace-pre-wrap">{JSON.stringify(data, null, 2).slice(0, 1500)}</pre>
+        </Card>
+      )}
+
+      {!pro && (
         <Card>
-          <div className="font-semibold">Retail summary</div>
+          <div className="font-semibold">Retail note</div>
           <p className="text-sm text-zinc-400 mt-2">
-            Model score is explained by three visible drivers (technical, options flow, breadth). Use Morning Brief
-            for levels and max-loss sizing. Live ticks appear when Angel bridge is online.
+            LIVE = Angel REST LTP (few seconds delay). Compare with NSE/Angel app. Educational only — not advice.
           </p>
         </Card>
       )}

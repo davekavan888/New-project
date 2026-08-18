@@ -1,19 +1,19 @@
 /**
- * Novaforge Angel Bridge — Express + Socket.IO
- * Deploy on Railway/Render/VPS. Not for Vercel serverless.
+ * Novaforge Angel Bridge — REST LTP poll + Socket.IO
  */
 import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
-import { getSession, renewSessionAtMarketOpen } from '../auth/angelAuth.js'
+import { getSession, renewSessionAtMarketOpen, loginAngel } from '../auth/angelAuth.js'
 import { refreshScripMaster, tokenForSymbol, loadScripMaster } from '../scrip/mapper.js'
 import { AngelFeed } from '../ws/angelFeed.js'
 import { directionFactors } from '../calc/metrics.js'
+import { fetchLtp } from '../quote/ltp.js'
 
-// Railway sets PORT; domain may target 8787 — set PORT=8787 in Variables to match
 const PORT = Number(process.env.PORT || process.env.BRIDGE_PORT || 8787)
 const origin = process.env.CORS_ORIGIN || '*'
+const POLL_MS = Number(process.env.LTP_POLL_MS || 3000)
 
 const app = express()
 app.use(cors({ origin, credentials: true }))
@@ -26,6 +26,10 @@ let latest: Record<string, unknown> = {
   status: 'starting',
   factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
 }
+
+let activeSession: Awaited<ReturnType<typeof getSession>> | null = null
+let tokenToSymbol: Record<string, string> = {}
+let pollTimer: NodeJS.Timeout | null = null
 
 app.get('/', (_req, res) => {
   res.json({
@@ -45,7 +49,6 @@ app.get('/snapshot', (_req, res) => {
   res.json(latest)
 })
 
-/** Safe: only shows whether keys exist, never values */
 app.get('/env-check', (_req, res) => {
   const keys = [
     'ANGEL_API_KEY',
@@ -66,8 +69,9 @@ app.get('/env-check', (_req, res) => {
 
 app.post('/admin/renew-session', async (_req, res) => {
   try {
-    const s = await renewSessionAtMarketOpen()
-    res.json({ ok: true, clientCode: s.clientCode, at: s.obtainedAt })
+    activeSession = await loginAngel()
+    latest = { ...latest, status: 'session_ok', renewedAt: Date.now() }
+    res.json({ ok: true, clientCode: activeSession.clientCode, at: activeSession.obtainedAt })
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) })
   }
@@ -87,10 +91,68 @@ io.on('connection', (socket) => {
   socket.on('heartbeat', () => socket.emit('heartbeat', { t: Date.now() }))
 })
 
+function publish(update: Record<string, unknown>) {
+  latest = update
+  io.emit('market', latest)
+}
+
+async function pollOnce() {
+  if (!activeSession || !process.env.ANGEL_API_KEY) return
+  if (!Object.keys(tokenToSymbol).length) return
+
+  try {
+    // Refresh session if older than 6 hours
+    if (Date.now() - activeSession.obtainedAt > 6 * 60 * 60 * 1000) {
+      activeSession = await loginAngel()
+    }
+
+    const { ltp, error } = await fetchLtp(activeSession, process.env.ANGEL_API_KEY, tokenToSymbol)
+    if (error && !Object.keys(ltp).length) {
+      publish({
+        status: 'session_ok',
+        quoteError: error,
+        symbols: Object.values(tokenToSymbol),
+        tokens: Object.keys(tokenToSymbol),
+        ts: Date.now(),
+        factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
+      })
+      return
+    }
+
+    if (Object.keys(ltp).length) {
+      publish({
+        status: 'live',
+        source: 'angel-rest-ltp',
+        ltp,
+        symbols: Object.values(tokenToSymbol),
+        tokens: Object.keys(tokenToSymbol),
+        ts: Date.now(),
+        factors: directionFactors({
+          technical: 55,
+          optionsFlow: 58,
+          breadth: 56,
+        }),
+      })
+    }
+  } catch (e) {
+    publish({
+      status: 'session_ok',
+      quoteError: String(e),
+      ts: Date.now(),
+    })
+  }
+}
+
+function startLtpPoll() {
+  if (pollTimer) clearInterval(pollTimer)
+  pollOnce()
+  pollTimer = setInterval(pollOnce, POLL_MS)
+}
+
 function startSimulated() {
   setInterval(() => {
     if (latest.status === 'live' || latest.status === 'session_ok') return
-    latest = {
+    publish({
       status: 'simulated',
       ltp: {
         NIFTY: 24350 + Math.random() * 20,
@@ -103,8 +165,7 @@ function startSimulated() {
       }),
       ts: Date.now(),
       note: 'Simulated until Angel session succeeds',
-    }
-    io.emit('market', latest)
+    })
   }, 3000)
 }
 
@@ -125,54 +186,62 @@ async function boot() {
       process.env.ANGEL_API_KEY && process.env.ANGEL_CLIENT_CODE && process.env.ANGEL_PASSWORD
 
     if (!hasKeys) {
-      latest = {
+      publish({
         status: 'error',
         error: 'Missing ANGEL_API_KEY / ANGEL_CLIENT_CODE / ANGEL_PASSWORD',
         ts: Date.now(),
-      }
+      })
       startSimulated()
       return
     }
 
-    const session = await getSession()
+    activeSession = await getSession()
     const symbols = (process.env.SUBSCRIBE_SYMBOLS || 'NIFTY,BANKNIFTY')
       .split(',')
       .map((s) => s.trim())
-    const tokens = symbols.map(tokenForSymbol).filter(Boolean) as string[]
 
-    latest = {
+    tokenToSymbol = {}
+    for (const sym of symbols) {
+      const tok = tokenForSymbol(sym)
+      if (tok) tokenToSymbol[tok] = sym
+    }
+
+    // Fallback hard-map if scrip master miss (known from prior session)
+    if (!Object.keys(tokenToSymbol).length) {
+      tokenToSymbol = { '99926011': 'NIFTY', '26009': 'BANKNIFTY' }
+    }
+
+    publish({
       status: 'session_ok',
-      symbols,
-      tokens,
+      symbols: Object.values(tokenToSymbol),
+      tokens: Object.keys(tokenToSymbol),
       ts: Date.now(),
       factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
-    }
-    io.emit('market', latest)
+    })
 
-    if (tokens.length && process.env.ANGEL_API_KEY) {
-      try {
-        const feed = new AngelFeed(session, process.env.ANGEL_API_KEY, (tick) => {
-          latest = {
+    // REST LTP poll = near-live during market hours
+    startLtpPoll()
+
+    // Optional WS (best-effort; REST is primary for reliability)
+    try {
+      if (process.env.ANGEL_ENABLE_WS === '1' && activeSession) {
+        const feed = new AngelFeed(activeSession, process.env.ANGEL_API_KEY!, (tick) => {
+          publish({
             status: 'live',
+            source: 'angel-ws',
             tick,
+            ltp: (latest as { ltp?: Record<string, number> }).ltp,
             ts: Date.now(),
-            factors: directionFactors({ technical: 55, optionsFlow: 60, breadth: 56 }),
-          }
-          io.emit('market', latest)
+          })
         })
-        feed.connect(tokens)
-      } catch (e) {
-        console.error('Feed connect failed', e)
-        latest = { ...latest, status: 'session_ok', feedError: String(e) }
-        startSimulated()
+        feed.connect(Object.keys(tokenToSymbol))
       }
-    } else {
-      console.warn('No tokens mapped — simulated')
-      startSimulated()
+    } catch (e) {
+      console.warn('WS optional failed', e)
     }
   } catch (e) {
     console.error('Boot error', e)
-    latest = { status: 'error', error: String(e), ts: Date.now() }
+    publish({ status: 'error', error: String(e), ts: Date.now() })
     startSimulated()
   }
 }
@@ -181,7 +250,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Novaforge Angel Bridge listening on 0.0.0.0:${PORT}`)
   boot().catch((e) => {
     console.error('boot fatal', e)
-    latest = { status: 'error', error: String(e), ts: Date.now() }
+    publish({ status: 'error', error: String(e), ts: Date.now() })
     startSimulated()
   })
 })
