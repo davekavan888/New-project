@@ -1,12 +1,12 @@
 /**
- * Novaforge Angel Bridge — REST LTP poll + Socket.IO
+ * Novaforge Angel Bridge — REST LTP poll (no WS)
  */
 import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
-import { getSession, renewSessionAtMarketOpen, loginAngel } from '../auth/angelAuth.js'
-import { refreshScripMaster, tokenForSymbol, loadScripMaster } from '../scrip/mapper.js'
+import { loginAngel } from '../auth/angelAuth.js'
+import { refreshScripMaster, loadScripMaster } from '../scrip/mapper.js'
 import { directionFactors } from '../calc/metrics.js'
 import { fetchLtp } from '../quote/ltp.js'
 
@@ -26,18 +26,16 @@ let latest: Record<string, unknown> = {
   factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
 }
 
-let activeSession: Awaited<ReturnType<typeof getSession>> | null = null
-let tokenToSymbol: Record<string, string> = {}
+let activeSession: Awaited<ReturnType<typeof loginAngel>> | null = null
+/** Fixed Angel index tokens — do not use scrip-master guesses for NIFTY/BANKNIFTY */
+let tokenToSymbol: Record<string, string> = {
+  '99926000': 'NIFTY',
+  '99926009': 'BANKNIFTY',
+}
 let pollTimer: NodeJS.Timeout | null = null
 
 app.get('/', (_req, res) => {
-  res.json({
-    service: 'novaforge-angel-bridge',
-    ok: true,
-    health: '/health',
-    snapshot: '/snapshot',
-    port: PORT,
-  })
+  res.json({ service: 'novaforge-angel-bridge', ok: true, health: '/health', snapshot: '/snapshot' })
 })
 
 app.get('/health', (_req, res) => {
@@ -49,37 +47,20 @@ app.get('/snapshot', (_req, res) => {
 })
 
 app.get('/env-check', (_req, res) => {
-  const keys = [
-    'ANGEL_API_KEY',
-    'ANGEL_CLIENT_CODE',
-    'ANGEL_PASSWORD',
-    'ANGEL_TOTP_SECRET',
-    'CORS_ORIGIN',
-    'PORT',
-    'SUBSCRIBE_SYMBOLS',
-  ] as const
+  const keys = ['ANGEL_API_KEY', 'ANGEL_CLIENT_CODE', 'ANGEL_PASSWORD', 'ANGEL_TOTP_SECRET', 'PORT'] as const
   const report: Record<string, { present: boolean; length: number }> = {}
   for (const k of keys) {
     const v = process.env[k]
     report[k] = { present: Boolean(v && String(v).trim()), length: v ? String(v).length : 0 }
   }
-  res.json({ report, nodeEnv: process.env.NODE_ENV || null })
+  res.json({ report })
 })
 
 app.post('/admin/renew-session', async (_req, res) => {
   try {
     activeSession = await loginAngel()
     latest = { ...latest, status: 'session_ok', renewedAt: Date.now() }
-    res.json({ ok: true, clientCode: activeSession.clientCode, at: activeSession.obtainedAt })
-  } catch (e) {
-    res.status(500).json({ ok: false, error: String(e) })
-  }
-})
-
-app.post('/admin/refresh-scrip', async (_req, res) => {
-  try {
-    const n = await refreshScripMaster()
-    res.json({ ok: true, rows: n })
+    res.json({ ok: true, at: activeSession.obtainedAt })
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e) })
   }
@@ -87,7 +68,6 @@ app.post('/admin/refresh-scrip', async (_req, res) => {
 
 io.on('connection', (socket) => {
   socket.emit('market', latest)
-  socket.on('heartbeat', () => socket.emit('heartbeat', { t: Date.now() }))
 })
 
 function publish(update: Record<string, unknown>) {
@@ -97,143 +77,82 @@ function publish(update: Record<string, unknown>) {
 
 async function pollOnce() {
   if (!activeSession || !process.env.ANGEL_API_KEY) return
-  if (!Object.keys(tokenToSymbol).length) return
-
   try {
-    // Refresh session if older than 6 hours
     if (Date.now() - activeSession.obtainedAt > 6 * 60 * 60 * 1000) {
       activeSession = await loginAngel()
     }
-
-    const { ltp, error } = await fetchLtp(activeSession, process.env.ANGEL_API_KEY, tokenToSymbol)
+    const { ltp, error, raw } = await fetchLtp(activeSession, process.env.ANGEL_API_KEY, tokenToSymbol)
     if (error && !Object.keys(ltp).length) {
       publish({
         status: 'session_ok',
         quoteError: error,
-        symbols: Object.values(tokenToSymbol),
+        quoteRaw: raw,
+        symbols: ['NIFTY', 'BANKNIFTY'],
         tokens: Object.keys(tokenToSymbol),
         ts: Date.now(),
         factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
       })
       return
     }
-
     if (Object.keys(ltp).length) {
       publish({
         status: 'live',
         source: 'angel-rest-ltp',
         ltp,
-        symbols: Object.values(tokenToSymbol),
+        symbols: ['NIFTY', 'BANKNIFTY'],
         tokens: Object.keys(tokenToSymbol),
         ts: Date.now(),
-        factors: directionFactors({
-          technical: 55,
-          optionsFlow: 58,
-          breadth: 56,
-        }),
+        factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
       })
     }
   } catch (e) {
-    publish({
-      status: 'session_ok',
-      quoteError: String(e),
-      ts: Date.now(),
-    })
+    publish({ status: 'session_ok', quoteError: String(e), ts: Date.now() })
   }
 }
 
 function startLtpPoll() {
   if (pollTimer) clearInterval(pollTimer)
-  pollOnce()
-  pollTimer = setInterval(pollOnce, POLL_MS)
-}
-
-function startSimulated() {
-  setInterval(() => {
-    if (latest.status === 'live' || latest.status === 'session_ok') return
-    publish({
-      status: 'simulated',
-      ltp: {
-        NIFTY: 24350 + Math.random() * 20,
-        BANKNIFTY: 51200 + Math.random() * 40,
-      },
-      factors: directionFactors({
-        technical: 50 + Math.random() * 20,
-        optionsFlow: 50 + Math.random() * 20,
-        breadth: 50 + Math.random() * 20,
-      }),
-      ts: Date.now(),
-      note: 'Simulated until Angel session succeeds',
-    })
-  }, 3000)
+  void pollOnce()
+  pollTimer = setInterval(() => void pollOnce(), POLL_MS)
 }
 
 async function boot() {
   try {
     try {
       await refreshScripMaster()
-    } catch (e) {
-      console.warn('Scrip refresh skipped', e)
+    } catch {
       try {
         loadScripMaster()
       } catch {
-        /* empty */
+        /* ignore */
       }
     }
 
-    const hasKeys =
-      process.env.ANGEL_API_KEY && process.env.ANGEL_CLIENT_CODE && process.env.ANGEL_PASSWORD
-
-    if (!hasKeys) {
+    if (!process.env.ANGEL_API_KEY || !process.env.ANGEL_CLIENT_CODE || !process.env.ANGEL_PASSWORD) {
       publish({
         status: 'error',
         error: 'Missing ANGEL_API_KEY / ANGEL_CLIENT_CODE / ANGEL_PASSWORD',
         ts: Date.now(),
       })
-      startSimulated()
       return
     }
 
-    activeSession = await loginAngel() // fresh JWT each boot for quote API
-    const symbols = (process.env.SUBSCRIBE_SYMBOLS || 'NIFTY,BANKNIFTY')
-      .split(',')
-      .map((s) => s.trim())
-
-    // Prefer official Angel index tokens (scrip map often wrong for indices)
-    tokenToSymbol = {
-      '99926000': 'NIFTY',
-      '99926009': 'BANKNIFTY',
-    }
-    // Also try alternate Nifty token if needed later
-    for (const sym of symbols) {
-      const tok = tokenForSymbol(sym)
-      if (tok && !Object.values(tokenToSymbol).includes(sym)) {
-        tokenToSymbol[tok] = sym
-      }
-    }
-
+    activeSession = await loginAngel()
     publish({
       status: 'session_ok',
-      symbols: Object.values(tokenToSymbol),
+      symbols: ['NIFTY', 'BANKNIFTY'],
       tokens: Object.keys(tokenToSymbol),
       ts: Date.now(),
       factors: directionFactors({ technical: 55, optionsFlow: 58, breadth: 56 }),
     })
-
-    // REST LTP poll = near-live during market hours
     startLtpPoll()
-} catch (e) {
+  } catch (e) {
     console.error('Boot error', e)
     publish({ status: 'error', error: String(e), ts: Date.now() })
-    startSimulated()
   }
 }
 
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Novaforge Angel Bridge listening on 0.0.0.0:${PORT}`)
-  boot().catch((e) => {
-    console.error('boot fatal', e)
-    publish({ status: 'error', error: String(e), ts: Date.now() })
-    startSimulated()
-  })
+  void boot()
 })
