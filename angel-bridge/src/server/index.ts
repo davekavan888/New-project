@@ -7,7 +7,6 @@ import { createServer } from 'http'
 import { Server } from 'socket.io'
 import { getSession, renewSessionAtMarketOpen, loginAngel } from '../auth/angelAuth.js'
 import { refreshScripMaster, tokenForSymbol, loadScripMaster } from '../scrip/mapper.js'
-import { AngelFeed } from '../ws/angelFeed.js'
 import { directionFactors } from '../calc/metrics.js'
 import { fetchLtp } from '../quote/ltp.js'
 
@@ -195,20 +194,22 @@ async function boot() {
       return
     }
 
-    activeSession = await getSession()
+    activeSession = await loginAngel() // fresh JWT each boot for quote API
     const symbols = (process.env.SUBSCRIBE_SYMBOLS || 'NIFTY,BANKNIFTY')
       .split(',')
       .map((s) => s.trim())
 
-    tokenToSymbol = {}
+    // Prefer official Angel index tokens (scrip map often wrong for indices)
+    tokenToSymbol = {
+      '99926000': 'NIFTY',
+      '99926009': 'BANKNIFTY',
+    }
+    // Also try alternate Nifty token if needed later
     for (const sym of symbols) {
       const tok = tokenForSymbol(sym)
-      if (tok) tokenToSymbol[tok] = sym
-    }
-
-    // Fallback hard-map if scrip master miss (known from prior session)
-    if (!Object.keys(tokenToSymbol).length) {
-      tokenToSymbol = { '99926011': 'NIFTY', '26009': 'BANKNIFTY' }
+      if (tok && !Object.values(tokenToSymbol).includes(sym)) {
+        tokenToSymbol[tok] = sym
+      }
     }
 
     publish({
@@ -221,25 +222,7 @@ async function boot() {
 
     // REST LTP poll = near-live during market hours
     startLtpPoll()
-
-    // Optional WS (best-effort; REST is primary for reliability)
-    try {
-      if (process.env.ANGEL_ENABLE_WS === '1' && activeSession) {
-        const feed = new AngelFeed(activeSession, process.env.ANGEL_API_KEY!, (tick) => {
-          publish({
-            status: 'live',
-            source: 'angel-ws',
-            tick,
-            ltp: (latest as { ltp?: Record<string, number> }).ltp,
-            ts: Date.now(),
-          })
-        })
-        feed.connect(Object.keys(tokenToSymbol))
-      }
-    } catch (e) {
-      console.warn('WS optional failed', e)
-    }
-  } catch (e) {
+} catch (e) {
     console.error('Boot error', e)
     publish({ status: 'error', error: String(e), ts: Date.now() })
     startSimulated()

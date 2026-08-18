@@ -1,9 +1,18 @@
 /**
- * Angel SmartAPI REST LTP quote (market-hours near-live)
+ * Angel SmartAPI REST LTP — indices use known tokens
  */
 import type { AngelSession } from '../auth/angelAuth.js'
 
 export type LtpMap = Record<string, number>
+
+/** Official-style index tokens used by Angel (NSE) */
+export const INDEX_TOKENS: Record<string, string> = {
+  NIFTY: '99926000',
+  BANKNIFTY: '99926009',
+  // alternates sometimes used
+  NIFTY_ALT: '99926011',
+  BANKNIFTY_ALT: '99926009',
+}
 
 function headers(session: AngelSession, apiKey: string) {
   return {
@@ -17,6 +26,41 @@ function headers(session: AngelSession, apiKey: string) {
     'X-MACAddress': '00:00:00:00:00:00',
     'X-PrivateKey': apiKey,
   }
+}
+
+function parseFetched(json: any, tokenToSymbol: Record<string, string>): LtpMap {
+  const ltp: LtpMap = {}
+  const data = json?.data
+  let list: any[] = []
+  if (Array.isArray(data?.fetched)) list = data.fetched
+  else if (Array.isArray(data?.unfetched) && Array.isArray(data?.fetched)) list = data.fetched
+  else if (Array.isArray(data)) list = data
+  else if (data && typeof data === 'object') {
+    // sometimes map by token
+    for (const [k, v] of Object.entries(data)) {
+      if (v && typeof v === 'object' && ('ltp' in (v as object) || 'last_traded_price' in (v as object))) {
+        list.push({ symbolToken: k, ...(v as object) })
+      }
+    }
+  }
+
+  for (const row of list) {
+    const tok = String(row.symbolToken ?? row.token ?? row.symboltoken ?? '')
+    const sym =
+      tokenToSymbol[tok] ||
+      (String(row.tradingSymbol || row.symbol || '').toUpperCase().includes('BANK')
+        ? 'BANKNIFTY'
+        : String(row.tradingSymbol || row.symbol || '').toUpperCase().includes('NIFTY')
+          ? 'NIFTY'
+          : tok)
+    const price = Number(row.ltp ?? row.last_traded_price ?? row.lastPrice ?? row.close)
+    if (sym && Number.isFinite(price) && price > 0) {
+      if (sym === 'NIFTY' || sym === 'BANKNIFTY' || tokenToSymbol[tok]) {
+        ltp[sym === tok ? tokenToSymbol[tok] || sym : sym] = price
+      }
+    }
+  }
+  return ltp
 }
 
 export async function fetchLtp(
@@ -40,20 +84,28 @@ export async function fetchLtp(
       },
     )
     const json = await res.json()
-    if (!json?.status) {
-      return { ltp: {}, error: json?.message || `quote_http_${res.status}`, raw: json }
+
+    if (json?.status === false || json?.success === false) {
+      return {
+        ltp: {},
+        error: json?.message || json?.errorcode || `quote_failed_${res.status}`,
+        raw: { message: json?.message, errorcode: json?.errorcode },
+      }
     }
 
-    const ltp: LtpMap = {}
-    const fetched = json?.data?.fetched || json?.data || []
-    const list = Array.isArray(fetched) ? fetched : []
-    for (const row of list) {
-      const tok = String(row.symbolToken || row.token || '')
-      const sym = tokenToSymbol[tok] || row.tradingSymbol || tok
-      const price = Number(row.ltp ?? row.last_traded_price ?? row.lastPrice)
-      if (sym && Number.isFinite(price)) ltp[sym] = price
+    const ltp = parseFetched(json, tokenToSymbol)
+    if (!Object.keys(ltp).length) {
+      return {
+        ltp: {},
+        error: 'empty_ltp_parse',
+        raw: {
+          message: json?.message,
+          keys: json?.data ? Object.keys(json.data) : [],
+          sample: JSON.stringify(json?.data).slice(0, 400),
+        },
+      }
     }
-    return { ltp, raw: json }
+    return { ltp, raw: { ok: true } }
   } catch (e) {
     return { ltp: {}, error: String(e) }
   }
