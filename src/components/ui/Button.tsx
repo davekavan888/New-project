@@ -11,7 +11,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 export const Button = forwardRef<HTMLButtonElement, Props>(
   ({ className, variant = 'primary', size = 'md', loading, children, disabled, ...props }, ref) => {
     const variants = {
-      primary: 'bg-indigo-500 hover:bg-indigo-400 text-white shadow-lg shadow-indigo-500/20',
+      primary: 'bg-amber-600 hover:bg-amber-500 text-zinc-950 shadow-lg shadow-amber-600/25',
       secondary: 'bg-zinc-700 hover:bg-zinc-600 text-zinc-50',
       ghost: 'bg-transparent hover:bg-zinc-800 text-zinc-300',
       outline: 'border border-zinc-600 hover:border-zinc-500 text-zinc-100 hover:bg-zinc-800',
