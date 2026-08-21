@@ -27,51 +27,26 @@ let latest: Record<string, unknown> = {
 }
 
 let activeSession: Awaited<ReturnType<typeof loginAngel>> | null = null
-
-/** Fixed Angel index tokens — do not use scrip-master guesses for NIFTY/BANKNIFTY */
 let tokenToSymbol: Record<string, string> = {
   '99926000': 'NIFTY',
   '99926009': 'BANKNIFTY',
 }
-
 let pollTimer: NodeJS.Timeout | null = null
 
 app.get('/', (_req, res) => {
-  res.json({
-    service: 'novaforge-angel-bridge',
-    ok: true,
-    health: '/health',
-    snapshot: '/snapshot',
-  })
+  res.json({ service: 'novaforge-angel-bridge', ok: true, health: '/health', snapshot: '/snapshot' })
 })
-
-app.get('/health', (_req, res) => {
-  res.json({ ok: true, latestStatus: latest.status, port: PORT })
-})
-
-app.get('/snapshot', (_req, res) => {
-  res.json(latest)
-})
-
+app.get('/health', (_req, res) => res.json({ ok: true, latestStatus: latest.status, port: PORT }))
+app.get('/snapshot', (_req, res) => res.json(latest))
 app.get('/env-check', (_req, res) => {
-  const keys = [
-    'ANGEL_API_KEY',
-    'ANGEL_CLIENT_CODE',
-    'ANGEL_PASSWORD',
-    'ANGEL_TOTP_SECRET',
-    'PORT',
-  ] as const
+  const keys = ['ANGEL_API_KEY', 'ANGEL_CLIENT_CODE', 'ANGEL_PASSWORD', 'ANGEL_TOTP_SECRET', 'PORT'] as const
   const report: Record<string, { present: boolean; length: number }> = {}
   for (const k of keys) {
     const v = process.env[k]
-    report[k] = {
-      present: Boolean(v && String(v).trim()),
-      length: v ? String(v).length : 0,
-    }
+    report[k] = { present: Boolean(v && String(v).trim()), length: v ? String(v).length : 0 }
   }
   res.json({ report })
 })
-
 app.post('/admin/renew-session', async (_req, res) => {
   try {
     activeSession = await loginAngel()
@@ -97,11 +72,7 @@ async function pollOnce() {
     if (Date.now() - activeSession.obtainedAt > 6 * 60 * 60 * 1000) {
       activeSession = await loginAngel()
     }
-    const { ltp, error, raw } = await fetchLtp(
-      activeSession,
-      process.env.ANGEL_API_KEY,
-      tokenToSymbol,
-    )
+    const { ltp, error, raw } = await fetchLtp(activeSession, process.env.ANGEL_API_KEY, tokenToSymbol)
     if (error && !Object.keys(ltp).length) {
       publish({
         status: 'session_ok',
@@ -147,12 +118,7 @@ async function boot() {
         /* ignore */
       }
     }
-
-    if (
-      !process.env.ANGEL_API_KEY ||
-      !process.env.ANGEL_CLIENT_CODE ||
-      !process.env.ANGEL_PASSWORD
-    ) {
+    if (!process.env.ANGEL_API_KEY || !process.env.ANGEL_CLIENT_CODE || !process.env.ANGEL_PASSWORD) {
       publish({
         status: 'error',
         error: 'Missing ANGEL_API_KEY / ANGEL_CLIENT_CODE / ANGEL_PASSWORD',
@@ -160,7 +126,6 @@ async function boot() {
       })
       return
     }
-
     activeSession = await loginAngel()
     publish({
       status: 'session_ok',
