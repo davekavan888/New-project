@@ -12,6 +12,7 @@ import {
   InstitutionalPage,
   SettingsPage,
 } from '@/pages/SimplePages'
+import { Forecast30Page } from '@/pages/Forecast30Page'
 import {
   OptionsAnalyticsPage,
   ScannersAdvancedPage,
@@ -33,6 +34,7 @@ export default function App() {
       >
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/morning" element={<MorningBriefPage />} />
+        <Route path="/forecast30" element={<Forecast30Page />} />
         <Route path="/live" element={<LiveTerminalPage />} />
         <Route path="/scanners" element={<ScannersAdvancedPage />} />
         <Route path="/options" element={<OptionsAnalyticsPage />} />
