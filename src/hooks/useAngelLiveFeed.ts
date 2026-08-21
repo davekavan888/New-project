@@ -1,28 +1,51 @@
 /**
- * Connect React UI to Novaforge Angel Bridge (Socket.IO).
- * Set VITE_ANGEL_BRIDGE_URL=https://your-bridge.example.com
+ * Novaforge Angel Bridge — REST snapshot poll (primary) + Socket.IO (optional)
  */
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 
 export type LiveSnapshot = {
   status?: string
+  source?: string
   ts?: number
   ltp?: Record<string, number>
   tick?: unknown
+  build?: string
   factors?: {
     score: number
     weights: { technical: number; optionsFlow: number; marketBreadth: number }
     components: { technical: number; optionsFlow: number; breadth: number }
   }
   error?: string
+  quoteError?: string
 }
 
-const BRIDGE = import.meta.env.VITE_ANGEL_BRIDGE_URL as string | undefined
+const BRIDGE = (import.meta.env.VITE_ANGEL_BRIDGE_URL as string | undefined)?.replace(/\/$/, '')
+const POLL_MS = 3000
 
 export function useAngelLiveFeed() {
   const [data, setData] = useState<LiveSnapshot>({ status: 'idle' })
   const [connected, setConnected] = useState(false)
+  const socketRef = useRef<Socket | null>(null)
+
+  const refreshSnapshot = useCallback(async () => {
+    if (!BRIDGE) return
+    try {
+      const r = await fetch(`${BRIDGE}/snapshot`, { cache: 'no-store' })
+      const j = (await r.json()) as LiveSnapshot
+      setData(j)
+      if (j.status === 'live' || j.status === 'session_ok') {
+        setConnected(true)
+      }
+    } catch (e) {
+      setConnected(false)
+      setData((d) => ({
+        ...d,
+        status: d.status === 'live' ? d.status : 'connect_error',
+        error: String(e),
+      }))
+    }
+  }, [])
 
   useEffect(() => {
     if (!BRIDGE) {
@@ -30,39 +53,42 @@ export function useAngelLiveFeed() {
       return
     }
 
-    let socket: Socket | null = io(BRIDGE, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 20,
-      reconnectionDelay: 1500,
-    })
+    // Immediate + interval REST poll (reliable behind Railway)
+    void refreshSnapshot()
+    const poll = setInterval(() => void refreshSnapshot(), POLL_MS)
 
-    socket.on('connect', () => setConnected(true))
-    socket.on('disconnect', () => setConnected(false))
-    socket.on('market', (payload: LiveSnapshot) => setData(payload))
-    socket.on('connect_error', (err) => {
-      setData({ status: 'connect_error', error: err.message })
-    })
-
-    const hb = setInterval(() => socket?.emit('heartbeat'), 25000)
+    // Optional Socket.IO (may fail CORS; poll still works)
+    try {
+      const socket = io(BRIDGE, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 2000,
+      })
+      socketRef.current = socket
+      socket.on('connect', () => setConnected(true))
+      socket.on('disconnect', () => {
+        /* keep poll */
+      })
+      socket.on('market', (payload: LiveSnapshot) => {
+        setData(payload)
+        setConnected(true)
+      })
+    } catch {
+      /* poll only */
+    }
 
     return () => {
-      clearInterval(hb)
-      socket?.disconnect()
-      socket = null
+      clearInterval(poll)
+      socketRef.current?.disconnect()
+      socketRef.current = null
     }
-  }, [])
+  }, [refreshSnapshot])
 
-  const refreshSnapshot = useCallback(async () => {
-    if (!BRIDGE) return
-    try {
-      const r = await fetch(`${BRIDGE}/snapshot`)
-      const j = await r.json()
-      setData(j)
-    } catch (e) {
-      setData((d) => ({ ...d, error: String(e) }))
-    }
-  }, [])
-
-  return { data, connected, bridgeConfigured: Boolean(BRIDGE), refreshSnapshot }
+  return {
+    data,
+    connected,
+    bridgeConfigured: Boolean(BRIDGE),
+    refreshSnapshot,
+  }
 }

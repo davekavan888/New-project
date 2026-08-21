@@ -20,7 +20,7 @@ export function LiveTerminalPage() {
   const pro = mode === 'pro'
   const ltp = (data.ltp || {}) as Record<string, number>
   const health =
-    data.status === 'live'
+    data.status === 'live' || data.source === 'angel-rest-ltp'
       ? 'live'
       : data.status === 'session_ok'
         ? 'delayed'
