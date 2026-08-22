@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Sunrise,
   Radio,
-  Target,
   Filter,
   Activity,
   Bell,
@@ -11,6 +10,7 @@ import {
   Star,
   Settings,
   Building2,
+  Target,
 } from 'lucide-react'
 
 const items = [
@@ -33,10 +33,10 @@ export function Sidebar() {
       <div className="nf-brand">
         <div className="nf-brand-mark">N</div>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 650, color: '#f5f0e6', letterSpacing: '0.02em' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#4a3428', letterSpacing: '0.02em' }}>
             Novaforge
           </div>
-          <div style={{ fontSize: 10, color: 'rgba(212,160,23,0.85)' }}>Trading desk</div>
+          <div style={{ fontSize: 10, color: '#5a9a4c', fontWeight: 600 }}>Trading desk</div>
         </div>
       </div>
       <nav className="nf-nav">
@@ -51,7 +51,15 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div style={{ borderTop: '1px solid rgba(212,160,23,0.12)', padding: 12, fontSize: 10, color: '#5c584f' }}>
+      <div
+        style={{
+          borderTop: '1px solid rgba(107,79,58,0.18)',
+          padding: 12,
+          fontSize: 10,
+          color: '#7a6a5c',
+          background: 'linear-gradient(90deg, rgba(168,212,230,0.2), rgba(124,188,110,0.12))',
+        }}
+      >
         Personal use · educational only
       </div>
     </aside>

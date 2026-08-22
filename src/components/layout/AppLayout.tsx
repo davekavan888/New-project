@@ -9,21 +9,21 @@ export function AppLayout() {
   const navigate = useNavigate()
 
   return (
-    <div style={{ minHeight: '100vh', background: '#07070b' }}>
+    <div style={{ minHeight: '100vh' }}>
       <Sidebar />
       <div className="nf-shell">
         <header className="nf-header">
-          <div style={{ fontSize: 13, color: '#9a958c' }}>
-            <span style={{ color: '#d4a017', fontWeight: 600 }}>Novaforge</span>
-            <span style={{ margin: '0 8px', color: '#333' }}>·</span>
-            Trading desk
+          <div style={{ fontSize: 13, color: '#7a6a5c' }}>
+            <span style={{ color: '#6b4f3a', fontWeight: 700 }}>Novaforge</span>
+            <span style={{ margin: '0 8px', color: '#c4b5a5' }}>·</span>
+            <span style={{ color: '#5a9a4c' }}>Trading desk</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#ece8e1' }}>
+              <div style={{ fontSize: 13, fontWeight: 650, color: '#2c241c' }}>
                 {profile?.full_name || 'Trader'}
               </div>
-              <div style={{ fontSize: 10, color: 'rgba(212,160,23,0.75)' }}>Personal</div>
+              <div style={{ fontSize: 10, color: '#7eb8d4', fontWeight: 600 }}>Personal</div>
             </div>
             <Button
               variant="ghost"
