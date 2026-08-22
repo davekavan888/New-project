@@ -8,6 +8,7 @@ import { Server } from 'socket.io'
 import { loginAngel } from '../auth/angelAuth.js'
 import { directionFactors } from '../calc/metrics.js'
 import { fetchLtp } from '../quote/ltp.js'
+import { buildNiftyChain } from '../quote/optionChain.js'
 
 const PORT = Number(process.env.PORT || process.env.BRIDGE_PORT || 8787)
 const origin = process.env.CORS_ORIGIN || '*'
@@ -66,6 +67,27 @@ app.get('/env-check', (_req, res) => {
     report[k] = { present: Boolean(v && String(v).trim()), length: v ? String(v).length : 0 }
   }
   res.json({ report, tokens: tokenToSymbol, build: 'ltp-tokens-v3' })
+})
+
+
+app.get('/option-chain', async (_req, res) => {
+  try {
+    if (!activeSession || !process.env.ANGEL_API_KEY) {
+      activeSession = await loginAngel()
+    }
+    const chain = await buildNiftyChain(activeSession!, process.env.ANGEL_API_KEY!)
+    res.json({
+      ok: true,
+      underlying: 'NIFTY',
+      ts: Date.now(),
+      build: 'ltp-tokens-v3',
+      ...chain,
+      disclaimer:
+        'Educational option chain guide only. Not investment advice. OI/LTP depend on Angel feed availability.',
+    })
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e) })
+  }
 })
 
 app.post('/admin/renew-session', async (_req, res) => {

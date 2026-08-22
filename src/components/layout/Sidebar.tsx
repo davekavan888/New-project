@@ -11,6 +11,7 @@ import {
   Settings,
   Building2,
   Target,
+  Layers,
 } from 'lucide-react'
 
 const items = [
@@ -20,6 +21,7 @@ const items = [
   { to: '/forecast30', label: '30-Min Desk', icon: Target },
   { to: '/scanners', label: 'Scanners', icon: Filter },
   { to: '/options', label: 'Options', icon: Activity },
+  { to: '/chain', label: 'Nifty Chain', icon: Layers },
   { to: '/institutional', label: 'FII / DII', icon: Building2 },
   { to: '/watchlist', label: 'Watchlist', icon: Star },
   { to: '/alerts', label: 'Alerts', icon: Bell },
