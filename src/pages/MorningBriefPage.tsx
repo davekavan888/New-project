@@ -202,13 +202,24 @@ export function MorningBriefPage() {
 
       {/* FII DII */}
       <Card>
-        <div className="mb-3 font-semibold">FII / DII · source: {fiiSource}</div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-[#2c241c]">FII / DII</span>
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-[#7eb8d4]/50 bg-[#eef6fa] text-[#2c241c]">
+            source: {fiiSource || '—'}
+          </span>
+          {fiiSource === 'demo' && (
+            <span className="text-[11px] text-[#7a3a2e]">Illustrative sample — not NSE official live</span>
+          )}
+          {fiiSource === 'public-feed' && (
+            <span className="text-[11px] text-[#2f5c28]">Third-party public feed — verify on NSE/NSDL</span>
+          )}
+        </div>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={fii}>
-              <XAxis dataKey="date" tick={{ fill: '#71717a', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#71717a', fontSize: 10 }} />
-              <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8 }} />
+              <XAxis dataKey="date" tick={{ fill: '#7a6a5c', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#7a6a5c', fontSize: 10 }} />
+              <Tooltip contentStyle={{ background: '#fffdf9', border: '1px solid rgba(107,79,58,0.2)', borderRadius: 8, color: '#2c241c' }} />
               <Legend />
               <Bar dataKey="fii" name="FII net" fill="#6366f1" />
               <Bar dataKey="dii" name="DII net" fill="#10b981" />
@@ -239,9 +250,14 @@ export function MorningBriefPage() {
                 </div>
                 <div
                   className={cn(
-                    'text-sm font-medium capitalize px-2 py-1 rounded-lg bg-zinc-800',
-                    s.combined.bias === 'bullish' && 'text-emerald-400',
-                    s.combined.bias === 'bearish' && 'text-red-400',
+                    'text-sm font-semibold capitalize px-3 py-1 rounded-full border shadow-sm',
+                    s.combined.bias === 'bullish' &&
+                      'bg-[#e8f6e4] text-[#2f5c28] border-[#7cbc6e]/50',
+                    s.combined.bias === 'bearish' &&
+                      'bg-[#fdecea] text-[#7a3a2e] border-[#e0a090]/60',
+                    s.combined.bias !== 'bullish' &&
+                      s.combined.bias !== 'bearish' &&
+                      'bg-[#eef6fa] text-[#2c241c] border-[#7eb8d4]/50',
                   )}
                 >
                   {s.combined.bias}

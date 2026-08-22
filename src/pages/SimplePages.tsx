@@ -121,21 +121,24 @@ export function InstitutionalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-indigo-400" /> Institutional Tracker
+        <h1 className="text-2xl font-bold flex items-center gap-2 text-[#2c241c]">
+          <Building2 className="h-6 w-6 text-[#5a9a4c]" /> Institutional Tracker
         </h1>
-        <p className="text-sm text-zinc-400">FII / DII style flow context · pair with Morning Brief</p>
+        <p className="text-sm text-[#7a6a5c]">
+          FII / DII context · pair with Morning Brief ·{' '}
+          <span className="font-semibold text-[#7a3a2e]">cards below are SAMPLE placeholders</span>
+        </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ['FII Net (session style)', '+₹1,240 Cr', 'text-emerald-400'],
-          ['DII Net (session style)', '−₹420 Cr', 'text-red-400'],
-          ['FII trend (recent)', 'Improving', 'text-emerald-400'],
-          ['DII trend (recent)', 'Steady bid', 'text-zinc-200'],
+          ['FII Net (sample)', 'Use Morning Brief chart', 'text-[#2c241c]'],
+          ['DII Net (sample)', 'Use Morning Brief chart', 'text-[#2c241c]'],
+          ['FII trend', 'See chart source label', 'text-[#4a3428]'],
+          ['DII trend', 'Not official live NSE', 'text-[#4a3428]'],
         ].map(([l, v, c]) => (
           <Card key={l}>
-            <div className="text-xs text-zinc-400">{l}</div>
-            <div className={cn('mt-1 text-xl font-bold', c)}>{v}</div>
+            <div className="text-xs font-semibold text-[#7a6a5c]">{l}</div>
+            <div className={cn('mt-1 text-base font-bold', c)}>{v}</div>
           </Card>
         ))}
       </div>
