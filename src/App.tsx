@@ -15,6 +15,7 @@ import {
 import { Forecast30Page } from '@/pages/Forecast30Page'
 import { OptionChainPage } from '@/pages/OptionChainPage'
 import { NumerologyPage } from '@/pages/NumerologyPage'
+import { ReportCardPage } from '@/pages/ReportCardPage'
 import {
   OptionsAnalyticsPage,
   ScannersAdvancedPage,
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/alerts" element={<AlertsPage />} />
         <Route path="/ai" element={<AICopilotPage />} />
         <Route path="/numerology" element={<NumerologyPage />} />
+        <Route path="/report-card" element={<ReportCardPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

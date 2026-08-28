@@ -13,6 +13,7 @@ import {
   Target,
   Layers,
   Sparkles,
+  ClipboardCheck,
 } from 'lucide-react'
 
 const items = [
@@ -27,6 +28,7 @@ const items = [
   { to: '/watchlist', label: 'Watchlist', icon: Star },
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/ai', label: 'AI Copilot', icon: Bot },
+  { to: '/report-card', label: 'Report Card', icon: ClipboardCheck },
   { to: '/numerology', label: 'Numerology', icon: Sparkles },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]

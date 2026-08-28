@@ -19,7 +19,8 @@ export function AppLayout() {
             <span style={{ margin: '0 8px', color: '#c4b5a5' }}>·</span>
             <span style={{ color: '#5a9a4c' }}>Trading desk</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <InstallAppButton />
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 13, fontWeight: 650, color: '#2c241c' }}>
                 {profile?.full_name || 'Trader'}
