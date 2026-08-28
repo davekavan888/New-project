@@ -6,6 +6,10 @@ import App from './App'
 import { useAuthStore } from './stores/auth'
 import { SiteGate } from './components/auth/SiteGate'
 import './index.css'
+import { registerPWA, setupInstallPrompt } from './pwa'
+
+registerPWA()
+setupInstallPrompt()
 
 const qc = new QueryClient()
 

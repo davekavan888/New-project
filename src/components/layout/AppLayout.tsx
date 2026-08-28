@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar'
 import { useAuthStore } from '@/stores/auth'
 import { Button } from '@/components/ui/Button'
 import { LogOut } from 'lucide-react'
+import { InstallAppButton } from '@/components/InstallAppButton'
 
 export function AppLayout() {
   const { profile, signOut } = useAuthStore()
