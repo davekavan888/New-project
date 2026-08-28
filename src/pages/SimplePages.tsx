@@ -414,23 +414,35 @@ export function SettingsPage() {
   return (
     <div className="space-y-6 max-w-lg">
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Settings className="h-6 w-6 text-indigo-400" /> Settings
+        <h1 className="text-2xl font-bold flex items-center gap-2 text-[#2c241c]">
+          <Settings className="h-6 w-6 text-[#5a9a4c]" /> Settings
         </h1>
-        <p className="text-sm text-zinc-400">Personal preferences</p>
+        <p className="text-sm text-[#7a6a5c]">Personal desk · data sources · install</p>
       </div>
       <Card className="space-y-4">
         <div>
-          <div className="text-sm font-medium">Theme</div>
-          <div className="text-xs text-zinc-500">Dark (default) — premium trading workspace</div>
+          <div className="text-sm font-semibold text-[#2c241c]">Market data (real session)</div>
+          <div className="text-xs text-[#7a6a5c]">
+            Live Terminal / Chain use your Angel bridge when status is LIVE. Always check the LIVE /
+            DELAYED / DEMO badge. Internet required.
+          </div>
         </div>
         <div>
-          <div className="text-sm font-medium">Data mode</div>
-          <div className="text-xs text-zinc-500">Delayed / session data via secured API routes</div>
+          <div className="text-sm font-semibold text-[#2c241c]">Numerology (personal)</div>
+          <div className="text-xs text-[#7a6a5c]">
+            Calculated on your device from name + DOB (Sanātana-style numbers). Cultural reflection
+            only — not science and not market advice.
+          </div>
         </div>
         <div>
-          <div className="text-sm font-medium">Risk reminder</div>
-          <div className="text-xs text-zinc-500">Always set max loss before size. Educational product only.</div>
+          <div className="text-sm font-semibold text-[#2c241c]">Install app</div>
+          <div className="text-xs text-[#7a6a5c]">
+            Use header <strong>Get app</strong> for Android / laptop install steps (Chrome recommended).
+          </div>
+        </div>
+        <div>
+          <div className="text-sm font-semibold text-[#2c241c]">Risk reminder</div>
+          <div className="text-xs text-[#7a6a5c]">Educational only. Never risk money on numerology or unverified signals.</div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
