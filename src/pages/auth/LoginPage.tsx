@@ -18,7 +18,7 @@ export function LoginPage() {
     const err = await signIn(email, password)
     setLoading(false)
     if (err) setError(err)
-    else navigate('/dashboard')
+    else navigate('/decision')
   }
 
   return (
@@ -26,89 +26,67 @@ export function LoginPage() {
       className="flex min-h-screen items-center justify-center p-6"
       style={{
         background:
-          'radial-gradient(800px 400px at 15% 0%, rgba(168,212,230,0.45), transparent 55%), radial-gradient(700px 380px at 90% 10%, rgba(124,188,110,0.25), transparent 50%), linear-gradient(180deg, #f6f3ee, #ebe4d8)',
+          'radial-gradient(800px 400px at 10% 0%, rgba(201,162,39,0.18), transparent 55%), radial-gradient(700px 380px at 100% 10%, rgba(26,95,158,0.14), transparent 50%), linear-gradient(180deg, #f7f9fc, #eef3f9)',
       }}
     >
       <div
-        className="w-full max-w-md space-y-6 rounded-2xl border p-8 shadow-xl"
+        className="w-full max-w-md space-y-6 rounded-2xl border p-8"
         style={{
-          background: 'linear-gradient(165deg, #fffdf9, #f3ebe0)',
-          borderColor: 'rgba(107,79,58,0.2)',
-          boxShadow: '0 16px 48px rgba(74,52,40,0.12)',
+          background: 'linear-gradient(165deg, #ffffff, #f3f7fc)',
+          borderColor: 'rgba(201,162,39,0.35)',
+          boxShadow: '0 20px 50px rgba(15,40,80,0.1)',
         }}
       >
+        <div className="h-1 rounded-full" style={{ background: 'linear-gradient(90deg,#c9a227,#1a5f9e,#2d8f6f)' }} />
         <div className="flex items-center gap-3">
           <div
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-extrabold text-[#fffdf9]"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-sm font-extrabold text-white"
             style={{
-              background: 'linear-gradient(135deg, #6b4f3a, #4a3428)',
-              boxShadow: '0 4px 14px rgba(74,52,40,0.3)',
+              background: 'linear-gradient(135deg, #1a5f9e, #0d3d6e)',
+              boxShadow: '0 4px 14px rgba(26,95,158,0.35)',
             }}
           >
             N
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#2c241c]">Welcome back</h1>
-            <p className="text-sm text-[#7a6a5c]">
-              Sign in to <span className="font-semibold text-[#5a9a4c]">Novaforge</span>
+            <h1 className="text-2xl font-bold text-[#0f1b2d]">Welcome back</h1>
+            <p className="text-sm text-[#5a6b82]">
+              Sign in to <span className="font-semibold text-[#c9a227]">Novaforge</span>
             </p>
           </div>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#4a3428]">Email</label>
+            <label className="mb-1 block text-sm font-semibold text-[#0f1b2d]">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-11 w-full rounded-xl border px-3 text-sm text-[#2c241c] outline-none transition"
-              style={{
-                borderColor: 'rgba(107,79,58,0.25)',
-                background: '#fffdf9',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#7eb8d4'
-                e.target.style.boxShadow = '0 0 0 3px rgba(168,212,230,0.45)'
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(107,79,58,0.25)'
-                e.target.style.boxShadow = 'none'
-              }}
+              className="h-11 w-full rounded-xl border px-3 text-sm text-[#0f1b2d] outline-none"
+              style={{ borderColor: 'rgba(15,40,80,0.15)', background: '#fff' }}
               required
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#4a3428]">Password</label>
+            <label className="mb-1 block text-sm font-semibold text-[#0f1b2d]">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-11 w-full rounded-xl border px-3 text-sm text-[#2c241c] outline-none transition"
-              style={{
-                borderColor: 'rgba(107,79,58,0.25)',
-                background: '#fffdf9',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#7cbc6e'
-                e.target.style.boxShadow = '0 0 0 3px rgba(124,188,110,0.35)'
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = 'rgba(107,79,58,0.25)'
-                e.target.style.boxShadow = 'none'
-              }}
+              className="h-11 w-full rounded-xl border px-3 text-sm text-[#0f1b2d] outline-none"
+              style={{ borderColor: 'rgba(15,40,80,0.15)', background: '#fff' }}
               required
             />
           </div>
-          {error && <p className="text-sm font-medium text-[#b45a46]">{error}</p>}
+          {error && <p className="text-sm font-medium text-[#b33a3a]">{error}</p>}
           <Button type="submit" className="w-full" loading={loading}>
             Sign in
           </Button>
         </form>
-
-        <p className="text-center text-sm text-[#7a6a5c]">
-          Demo: any email/password works.{' '}
-          <Link to="/signup" className="font-semibold text-[#2f6f9e] hover:underline">
+        <p className="text-center text-sm text-[#5a6b82]">
+          Demo works with any email/password.{' '}
+          <Link to="/signup" className="font-semibold text-[#1a5f9e]">
             Sign up
           </Link>
         </p>

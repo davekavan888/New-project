@@ -1,35 +1,19 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  Sunrise,
+  Scale,
   Radio,
-  Filter,
-  Activity,
-  Bell,
-  Bot,
-  Star,
-  Settings,
-  Building2,
-  Target,
-  Layers,
-  Sparkles,
   ClipboardCheck,
+  Layers,
+  Sunrise,
+  Settings,
 } from 'lucide-react'
 
 const items = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/morning', label: 'Morning Brief', icon: Sunrise },
+  { to: '/decision', label: 'Decision Desk', icon: Scale },
   { to: '/live', label: 'Live Terminal', icon: Radio },
-  { to: '/forecast30', label: '30-Min Desk', icon: Target },
-  { to: '/scanners', label: 'Scanners', icon: Filter },
-  { to: '/options', label: 'Options', icon: Activity },
-  { to: '/chain', label: 'Nifty Chain', icon: Layers },
-  { to: '/institutional', label: 'FII / DII', icon: Building2 },
-  { to: '/watchlist', label: 'Watchlist', icon: Star },
-  { to: '/alerts', label: 'Alerts', icon: Bell },
-  { to: '/ai', label: 'AI Copilot', icon: Bot },
   { to: '/report-card', label: 'Report Card', icon: ClipboardCheck },
-  { to: '/numerology', label: 'Numerology', icon: Sparkles },
+  { to: '/chain', label: 'Nifty Chain', icon: Layers },
+  { to: '/morning', label: 'Morning Brief', icon: Sunrise },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -39,10 +23,10 @@ export function Sidebar() {
       <div className="nf-brand">
         <div className="nf-brand-mark">N</div>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#4a3428', letterSpacing: '0.02em' }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f1b2d', letterSpacing: '0.02em' }}>
             Novaforge
           </div>
-          <div style={{ fontSize: 10, color: '#5a9a4c', fontWeight: 600 }}>Trading desk</div>
+          <div style={{ fontSize: 10, color: '#c9a227', fontWeight: 700 }}>Decision desk</div>
         </div>
       </div>
       <nav className="nf-nav">
@@ -59,14 +43,14 @@ export function Sidebar() {
       </nav>
       <div
         style={{
-          borderTop: '1px solid rgba(107,79,58,0.18)',
+          borderTop: '1px solid rgba(15,40,80,0.1)',
           padding: 12,
           fontSize: 10,
-          color: '#7a6a5c',
-          background: 'linear-gradient(90deg, rgba(168,212,230,0.2), rgba(124,188,110,0.12))',
+          color: '#5a6b82',
+          background: 'linear-gradient(90deg, rgba(201,162,39,0.1), rgba(26,95,158,0.06))',
         }}
       >
-        Personal use · educational only
+        Educational · not investment advice
       </div>
     </aside>
   )

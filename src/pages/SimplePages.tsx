@@ -413,60 +413,37 @@ export function CalendarPage() {
 export function SettingsPage() {
   return (
     <div className="space-y-6 max-w-lg">
+      <div className="nf-art-line" />
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2 text-[#2c241c]">
-          <Settings className="h-6 w-6 text-[#5a9a4c]" /> Settings
-        </h1>
-        <p className="text-sm text-[#7a6a5c]">Personal desk · data sources · install</p>
+        <h1 className="text-2xl font-bold text-[#0f1b2d]">Settings</h1>
+        <p className="text-sm text-[#5a6b82]">Focus desk · data honesty</p>
       </div>
       <Card className="space-y-4">
         <div>
-          <div className="text-sm font-semibold text-[#2c241c]">Market data (real session)</div>
-          <div className="text-xs text-[#7a6a5c]">
-            Live Terminal / Chain use your Angel bridge when status is LIVE. Always check the LIVE /
-            DELAYED / DEMO badge. Internet required.
+          <div className="text-sm font-semibold text-[#0f1b2d]">Market data</div>
+          <div className="text-xs text-[#5a6b82]">
+            Decision Desk and Live Terminal use Angel bridge when badge is LIVE. Internet required.
           </div>
         </div>
         <div>
-          <div className="text-sm font-semibold text-[#2c241c]">Numerology (personal)</div>
-          <div className="text-xs text-[#7a6a5c]">
-            Calculated on your device from name + DOB (Sanātana-style numbers). Cultural reflection
-            only — not science and not market advice.
+          <div className="text-sm font-semibold text-[#0f1b2d]">Report Card</div>
+          <div className="text-xs text-[#5a6b82]">
+            Locks are saved on this device only. DEMO locks are not counted.
           </div>
         </div>
         <div>
-          <div className="text-sm font-semibold text-[#2c241c]">Install app</div>
-          <div className="text-xs text-[#7a6a5c]">
-            Use header <strong>Get app</strong> for Android / laptop install steps (Chrome recommended).
-          </div>
+          <div className="text-sm font-semibold text-[#0f1b2d]">Install app</div>
+          <div className="text-xs text-[#5a6b82]">Use header Get app · Chrome recommended.</div>
         </div>
         <div>
-          <div className="text-sm font-semibold text-[#2c241c]">Risk reminder</div>
-          <div className="text-xs text-[#7a6a5c]">Educational only. Never risk money on numerology or unverified signals.</div>
+          <div className="text-sm font-semibold text-[#0f1b2d]">Risk</div>
+          <div className="text-xs text-[#5a6b82]">Educational only — not investment advice.</div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-            Reload app
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await fetch('/api/gate', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'logout' }),
-              })
-              window.location.href = '/'
-            }}
-          >
-            Lock site again
+            Reload
           </Button>
         </div>
-        <p className="text-[10px] text-zinc-500">
-          Personal mode: share only your access key with people you trust. This is not bank-grade encryption.
-        </p>
       </Card>
     </div>
   )
