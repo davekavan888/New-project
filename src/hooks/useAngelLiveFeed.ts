@@ -21,7 +21,7 @@ export type LiveSnapshot = {
 }
 
 const BRIDGE = (import.meta.env.VITE_ANGEL_BRIDGE_URL as string | undefined)?.replace(/\/$/, '')
-const POLL_MS = 3000
+const POLL_MS = 2000
 
 export function useAngelLiveFeed() {
   const [data, setData] = useState<LiveSnapshot>({ status: 'idle' })

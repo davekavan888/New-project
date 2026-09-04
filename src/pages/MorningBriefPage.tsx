@@ -206,7 +206,7 @@ export function MorningBriefPage() {
             <span className="text-[11px] text-[#7a3a2e]">Illustrative sample — not NSE official live</span>
           )}
           {fiiSource === 'public-feed' && (
-            <span className="text-[11px] text-[#2f5c28]">Third-party public feed — verify on NSE/NSDL</span>
+            <span className="text-[11px] text-[#2f5c28]">Public/EOD-style feed — not intraday live · verify NSE/NSDL</span>
           )}
         </div>
         <div className="h-48">
