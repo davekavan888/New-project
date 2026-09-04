@@ -148,15 +148,10 @@ export function MorningBriefPage() {
         )}
         <Card>
           <div className="text-xs text-zinc-500 flex items-center gap-1">
-            <Shield className="h-3 w-3" /> Max loss per idea (₹)
+            <Shield className="h-3 w-3" /> 
           </div>
-          <input
-            type="number"
-            value={maxLoss}
-            onChange={(e) => setMaxLoss(Number(e.target.value) || 0)}
-            className="mt-2 h-10 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-lg font-bold outline-none focus:border-indigo-500"
-          />
-          <p className="mt-1 text-[10px] text-zinc-500">Used only to size educational qty ideas</p>
+          
+          <p className="mt-1 text-[10px] text-zinc-500"></p>
         </Card>
         <Card>
           <div className="text-xs text-zinc-500">Model mix (Nifty)</div>
@@ -273,7 +268,7 @@ export function MorningBriefPage() {
                   <div className="font-medium tabular-nums">₹{s.risk.targetIdea}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-zinc-500">Qty idea @ max loss ₹{maxLoss}</div>
+                  <div className="text-xs text-zinc-500">Qty idea (edu)</div>
                   <div className="font-medium tabular-nums">{s.risk.qtyIdea}</div>
                 </div>
               </div>

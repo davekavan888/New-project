@@ -16,8 +16,6 @@ export function AppLayout() {
         <header className="nf-header">
           <div style={{ fontSize: 13, color: '#5a6b82' }}>
             <span style={{ color: '#1a5f9e', fontWeight: 800 }}>Novaforge</span>
-            <span style={{ margin: '0 8px', color: '#c9a227' }}>·</span>
-            <span style={{ color: '#2d8f6f', fontWeight: 600 }}>Royal desk</span>
           </div>
           <div
             style={{
