@@ -18,7 +18,7 @@ const items = [
   { to: '/chain', label: 'Nifty Chain', icon: Layers },
   { to: '/morning', label: 'Morning Brief', icon: Sunrise },
   { to: '/ipo', label: 'IPO Desk', icon: Landmark },
-  { to: '/search', label: 'Stocks', icon: Search },
+  { to: '/search', label: 'Stock Search', icon: Search },
   { to: '/news', label: 'News impact', icon: Newspaper },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -29,10 +29,12 @@ export function Sidebar() {
       <div className="nf-brand">
         <div className="nf-brand-mark">N</div>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f1b2d', letterSpacing: '0.02em' }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#f4f0e6', letterSpacing: '0.04em', fontFamily: 'Georgia, serif' }}>
             Novaforge
           </div>
-          <div style={{ fontSize: 10, color: '#c9a227', fontWeight: 700 }}>Decision desk</div>
+          <div style={{ fontSize: 10, color: '#c9a227', fontWeight: 700, letterSpacing: '0.06em' }}>
+            ROYAL DESK
+          </div>
         </div>
       </div>
       <nav className="nf-nav">
@@ -49,11 +51,12 @@ export function Sidebar() {
       </nav>
       <div
         style={{
-          borderTop: '1px solid rgba(15,40,80,0.1)',
+          borderTop: '1px solid rgba(201,162,39,0.25)',
           padding: 12,
           fontSize: 10,
-          color: '#5a6b82',
-          background: 'linear-gradient(90deg, rgba(201,162,39,0.1), rgba(26,95,158,0.06))',
+          color: 'rgba(244,240,230,0.65)',
+          background: 'rgba(201,162,39,0.08)',
+          fontFamily: 'Georgia, serif',
         }}
       >
         Educational · not investment advice

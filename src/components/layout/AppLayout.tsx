@@ -14,8 +14,10 @@ export function AppLayout() {
       <Sidebar />
       <div className="nf-shell">
         <header className="nf-header">
-          <div style={{ fontSize: 13, color: '#5a6b82' }}>
-            <span style={{ color: '#1a5f9e', fontWeight: 800 }}>Novaforge</span>
+          <div style={{ fontSize: 13, color: '#5c5348', fontFamily: 'Georgia, serif' }}>
+            <span style={{ color: '#1e3a5f', fontWeight: 800 }}>Novaforge</span>
+            <span style={{ margin: '0 8px', color: '#c9a227' }}>◆</span>
+            <span style={{ color: '#8a6d12', fontWeight: 600 }}>Court of markets</span>
           </div>
           <div
             style={{
@@ -28,10 +30,10 @@ export function AppLayout() {
           >
             <InstallAppButton />
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f1b2d' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1520' }}>
                 {profile?.full_name || 'Trader'}
               </div>
-              <div style={{ fontSize: 10, color: '#1a5f9e', fontWeight: 600 }}>Personal</div>
+              <div style={{ fontSize: 10, color: '#c9a227', fontWeight: 700 }}>Personal</div>
             </div>
             <Button
               variant="ghost"

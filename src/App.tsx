@@ -9,10 +9,12 @@ import { LiveTerminalPage } from '@/pages/workspace/LiveTerminalPage'
 import { SettingsPage } from '@/pages/SimplePages'
 import { OptionChainPage } from '@/pages/OptionChainPage'
 import { ReportCardPage } from '@/pages/ReportCardPage'
-import { StockSearchPage } from '@/pages/StockSearchPage'
-import { StockDetailPage } from '@/pages/StockDetailPage'
-import { NewsIntelPage } from '@/pages/NewsIntelPage'
-import { IpoDeskPage } from '@/pages/IpoDeskPage'
+import {
+  StockSearchPage,
+  StockDetailPage,
+  NewsIntelPage,
+  IpoDeskPage,
+} from '@/pages/ExtraPages'
 
 export default function App() {
   return (
@@ -38,7 +40,6 @@ export default function App() {
         <Route path="/news" element={<NewsIntelPage />} />
         <Route path="/ipo" element={<IpoDeskPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        {/* legacy redirects */}
         <Route path="/forecast30" element={<Navigate to="/decision" replace />} />
         <Route path="/numerology" element={<Navigate to="/decision" replace />} />
         <Route path="/scanners" element={<Navigate to="/decision" replace />} />
