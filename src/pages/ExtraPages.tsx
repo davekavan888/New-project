@@ -517,4 +517,53 @@ export const ExtraPages: React.FC = () => {
   )
 }
 
+
+
+/** Aliases + ETF matrix for Sovereign Palace App */
+export function UniversalStockScreener() {
+  return <UniversalSearchDesk />
+}
+
+export function InstitutionalFlowsAndNews() {
+  return <RealtimeNewsDesk />
+}
+
+export function SectorEtfMatrix() {
+  const rows = [
+    { name: 'Nifty IT / Technology', inTicker: 'ITBEES / NIFTYIT', usTicker: 'QQQ / XLK', note: 'Global tech risk-on cue for Indian IT' },
+    { name: 'Nifty Metal / Materials', inTicker: 'METAL ETF / HINDCOPPER', usTicker: 'XME / COPX', note: 'Copper & industrial metals cycle' },
+    { name: 'Gold / Silver ETFs', inTicker: 'GOLDBEES / SILVERBEES', usTicker: 'GLD / SLV', note: 'Hedge + industrial silver demand' },
+    { name: 'Banking / Financials', inTicker: 'BANKBEES / PSUBANK', usTicker: 'XLF / KBE', note: 'Rate + credit cycle sensitivity' },
+    { name: 'Energy / Oil proxies', inTicker: 'ONGC / RELIANCE', usTicker: 'USO / XLE', note: 'Crude & refining spreads' },
+  ]
+  return (
+    <div className="space-y-6">
+      <div className="border border-[#D4AF37]/25 bg-[#0F192C] rounded-2xl p-5">
+        <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">Sector & Thematic ETF Matrix</h2>
+        <p className="text-xs text-[#94A3B8] mt-1">
+          Educational India ↔ global baskets · not live NAV ticks · verify on Groww / IND Money
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {rows.map((r) => (
+          <div key={r.name} className="border border-[#D4AF37]/25 bg-[#0A1326] rounded-2xl p-5 space-y-3">
+            <h3 className="font-serif font-bold text-[#FDFBF7]">{r.name}</h3>
+            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div className="bg-[#070D18] border border-[#D4AF37]/15 rounded-xl p-3">
+                <span className="text-[10px] text-[#94A3B8] block">INDIA</span>
+                <span className="text-[#D4AF37] font-bold">{r.inTicker}</span>
+              </div>
+              <div className="bg-[#070D18] border border-[#D4AF37]/15 rounded-xl p-3">
+                <span className="text-[10px] text-[#94A3B8] block">US / GLOBAL</span>
+                <span className="text-[#D4AF37] font-bold">{r.usTicker}</span>
+              </div>
+            </div>
+            <p className="text-xs text-[#CBD5E1]">{r.note}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default ExtraPages
