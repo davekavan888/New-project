@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Royal typography helpers (loaded via index.html Google Fonts) */
+.font-royal { font-family: "Cinzel", Georgia, serif; }
+.font-royal-deco { font-family: "Cinzel Decorative", Cinzel, serif; }
+.font-mono-term { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+
 /* ===== Novaforge Royal Court — ivory · indigo · gold · emerald ===== */
 :root {
   --bg: #f4f0e6;
@@ -29,7 +35,7 @@ html, body, #root {
 body {
   margin: 0;
   color: var(--ink);
-  font-family: "Segoe UI", Georgia, "Times New Roman", ui-serif, serif;
+  font-family: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   background-color: var(--bg);
   background-image:

@@ -9,11 +9,12 @@ import { LiveTerminalPage } from '@/pages/workspace/LiveTerminalPage'
 import { SettingsPage } from '@/pages/SimplePages'
 import { OptionChainPage } from '@/pages/OptionChainPage'
 import { ReportCardPage } from '@/pages/ReportCardPage'
-import {
+import ExtraPages, {
   StockSearchPage,
   StockDetailPage,
   NewsIntelPage,
   IpoDeskPage,
+  GlobalMacroDesk,
 } from '@/pages/ExtraPages'
 
 export default function App() {
@@ -35,6 +36,8 @@ export default function App() {
         <Route path="/chain" element={<OptionChainPage />} />
         <Route path="/live" element={<LiveTerminalPage />} />
         <Route path="/report-card" element={<ReportCardPage />} />
+        <Route path="/court" element={<ExtraPages />} />
+        <Route path="/macro" element={<GlobalMacroDesk />} />
         <Route path="/search" element={<StockSearchPage />} />
         <Route path="/stock/:symbol" element={<StockDetailPage />} />
         <Route path="/news" element={<NewsIntelPage />} />
@@ -47,7 +50,7 @@ export default function App() {
         <Route path="/ai" element={<Navigate to="/decision" replace />} />
         <Route path="/watchlist" element={<Navigate to="/decision" replace />} />
         <Route path="/alerts" element={<Navigate to="/decision" replace />} />
-        <Route path="/institutional" element={<Navigate to="/morning" replace />} />
+        <Route path="/institutional" element={<Navigate to="/news" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/decision" replace />} />
     </Routes>

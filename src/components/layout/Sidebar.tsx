@@ -9,6 +9,8 @@ import {
   Landmark,
   Search,
   Newspaper,
+  Globe,
+  LayoutGrid,
 } from 'lucide-react'
 
 const items = [
@@ -16,10 +18,12 @@ const items = [
   { to: '/live', label: 'Live Terminal', icon: Radio },
   { to: '/report-card', label: 'Report Card', icon: ClipboardCheck },
   { to: '/chain', label: 'Nifty Chain', icon: Layers },
+  { to: '/court', label: 'Court Desk', icon: LayoutGrid },
+  { to: '/macro', label: 'Global Macro', icon: Globe },
   { to: '/morning', label: 'Morning Brief', icon: Sunrise },
   { to: '/ipo', label: 'IPO Desk', icon: Landmark },
-  { to: '/search', label: 'Stock Search', icon: Search },
-  { to: '/news', label: 'News impact', icon: Newspaper },
+  { to: '/search', label: 'Equity Search', icon: Search },
+  { to: '/news', label: 'FII / News', icon: Newspaper },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -29,7 +33,15 @@ export function Sidebar() {
       <div className="nf-brand">
         <div className="nf-brand-mark">N</div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#f4f0e6', letterSpacing: '0.04em', fontFamily: 'Georgia, serif' }}>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 800,
+              color: '#f4f0e6',
+              letterSpacing: '0.04em',
+              fontFamily: 'Cinzel, Georgia, serif',
+            }}
+          >
             Novaforge
           </div>
           <div style={{ fontSize: 10, color: '#c9a227', fontWeight: 700, letterSpacing: '0.06em' }}>
@@ -59,7 +71,7 @@ export function Sidebar() {
           fontFamily: 'Georgia, serif',
         }}
       >
-        Educational · not investment advice
+        Educational · sample cards marked · not advice
       </div>
     </aside>
   )
