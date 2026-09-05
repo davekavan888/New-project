@@ -9,19 +9,18 @@ import { lockCall } from '@/services/reportCard'
 import { Scale, AlertTriangle, Lock, Radio, ClipboardCheck, Layers } from 'lucide-react'
 
 export function DecisionPage() {
-  const { data, connected, bridgeConfigured, refreshSnapshot } = useAngelLiveFeed()
+  const { data, connected, bridgeConfigured, refreshSnapshot, ageSec, isLive } = useAngelLiveFeed()
   const ltp = (data.ltp || {}) as Record<string, number>
   const nifty = ltp.NIFTY ?? null
   const bank = ltp.BANKNIFTY ?? null
 
-  const health =
-    data.status === 'live' || data.source === 'angel-rest-ltp'
-      ? 'live'
-      : data.status === 'session_ok'
-        ? 'delayed'
-        : data.status === 'simulated'
-          ? 'demo'
-          : 'unavailable'
+  const health = isLive
+    ? 'live'
+    : data.status === 'session_ok'
+      ? 'delayed'
+      : data.status === 'simulated'
+        ? 'demo'
+        : 'unavailable'
 
   const forecast = useMemo(
     () =>
@@ -92,6 +91,9 @@ export function DecisionPage() {
           <p className="text-sm text-[#5a6b82] mt-1 flex flex-wrap items-center gap-2">
             What matters now · levels · invalidation · lock
             <DataHealthBadge status={health} />
+            {ageSec != null && (
+              <span className="text-xs text-[#1a5f9e] font-semibold">{ageSec}s ago</span>
+            )}
             {bridgeConfigured ? (
               <span className="text-xs text-[#1a5f9e]">
                 {connected ? 'Bridge linked' : 'Connecting…'}

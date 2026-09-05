@@ -13,17 +13,16 @@ import { fetchFIIDII, type FIIDIIRow } from '@/services/liveData'
 
 export function LiveTerminalPage() {
   const { mode } = useWorkspaceMode()
-  const { data, connected, bridgeConfigured, refreshSnapshot } = useAngelLiveFeed()
+  const { data, connected, bridgeConfigured, refreshSnapshot, isLive, ageSec } = useAngelLiveFeed()
   const pro = mode === 'pro'
   const ltp = (data.ltp || {}) as Record<string, number>
-  const health =
-    data.status === 'live' || data.source === 'angel-rest-ltp'
-      ? 'live'
-      : data.status === 'session_ok'
-        ? 'delayed'
-        : data.status === 'simulated'
-          ? 'demo'
-          : 'unavailable'
+  const health = isLive
+    ? 'live'
+    : data.status === 'session_ok'
+      ? 'delayed'
+      : data.status === 'simulated'
+        ? 'demo'
+        : 'unavailable'
 
   const [macro, setMacro] = useState<MacroRow[]>([])
   const [fii, setFii] = useState<FIIDIIRow[]>([])
@@ -48,8 +47,7 @@ export function LiveTerminalPage() {
     return () => clearInterval(t)
   }, [])
 
-  const ageSec = data.ts ? Math.max(0, Math.round((Date.now() - data.ts) / 1000)) : null
-
+  
   return (
     <div className={cn('space-y-4', pro && 'space-y-2 text-[13px]')}>
       <div className="nf-art-line" />

@@ -6,6 +6,9 @@ import {
   Layers,
   Sunrise,
   Settings,
+  Landmark,
+  Search,
+  Newspaper,
 } from 'lucide-react'
 
 const items = [
@@ -14,6 +17,9 @@ const items = [
   { to: '/report-card', label: 'Report Card', icon: ClipboardCheck },
   { to: '/chain', label: 'Nifty Chain', icon: Layers },
   { to: '/morning', label: 'Morning Brief', icon: Sunrise },
+  { to: '/ipo', label: 'IPO Desk', icon: Landmark },
+  { to: '/search', label: 'Stocks', icon: Search },
+  { to: '/news', label: 'News impact', icon: Newspaper },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
