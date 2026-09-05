@@ -1,422 +1,550 @@
 import React, { useState } from 'react'
 import {
-  TrendingUp,
   Search,
-  Newspaper,
-  Activity,
-  ArrowUpRight,
-  BarChart3,
-  Zap,
-  Landmark,
+  ShieldAlert,
+  ExternalLink,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react'
 
-// --- F&O PREDICTIVE ENGINES (5m / 10m / 15m) ---
-interface IntradayProjection {
-  timeframe: string
-  bias: 'STRONG_BULL' | 'BULL' | 'NEUTRAL' | 'BEAR' | 'STRONG_BEAR'
-  targetZone: string
-  confidence: number
-  driver: string
-  invalidation: string
+// =======================================================
+// 1. ALL-STOCK SCREENER WITH INTERACTIVE MODAL POPUP
+// =======================================================
+interface StockItem {
+  ticker: string
+  name: string
+  sector: string
+  price: string
+  change: string
+  isBull: boolean
+  category: 'HIGH_ORDER_BOOK' | '52W_HIGH' | '52W_LOW' | 'SPECULATIVE'
+  orderBook: string
+  annualRevenue: string
+  ratio: string
+  pe: string
+  w52High: string
+  w52Low: string
+  thesis: string
 }
 
-export const FoDecisionDesk: React.FC = () => {
-  const [selectedAsset, setSelectedAsset] = useState<'NIFTY' | 'BANKNIFTY' | 'SENSEX'>('NIFTY')
-  const assetMetrics = {
-    NIFTY: {
-      spot: '23,897.70',
-      change: '+0.10%',
-      pcr: '1.14',
-      maxPain: '23,900',
-      vwap: '23,882.40',
-    },
-    BANKNIFTY: {
-      spot: '51,240.50',
-      change: '+0.34%',
-      pcr: '0.92',
-      maxPain: '51,000',
-      vwap: '51,180.00',
-    },
-    SENSEX: {
-      spot: '76,515.43',
-      change: '+0.46%',
-      pcr: '1.05',
-      maxPain: '76,500',
-      vwap: '76,420.00',
-    },
-  }
-  const projections: IntradayProjection[] = [
-    {
-      timeframe: '5-Minute Scalp Horizon',
-      bias: 'BULL',
-      targetZone: '23,920 – 23,935',
-      confidence: 76,
-      driver: 'Volume delta above VWAP + aggressive Call unwinding at 23,900 strike.',
-      invalidation: '23,875 (Immediate Stop)',
-    },
-    {
-      timeframe: '15-Minute Momentum Window',
-      bias: 'BULL',
-      targetZone: '23,960 – 23,980',
-      confidence: 68,
-      driver: 'RSI(14) maintaining > 58 with 9/21 EMA golden-cross on 3-min interval.',
-      invalidation: '23,850',
-    },
-    {
-      timeframe: 'End-of-Session Trajectory',
-      bias: 'NEUTRAL',
-      targetZone: '23,880 – 23,940 Consolidation',
-      confidence: 55,
-      driver: 'High Put writing at 23,800 creating a solid floor; capped by 24,000 Call OI wall.',
-      invalidation: 'Break below 23,790',
-    },
-  ]
-
-  const tvSymbol =
-    selectedAsset === 'SENSEX'
-      ? 'BSE:SENSEX'
-      : selectedAsset === 'BANKNIFTY'
-        ? 'NSE:BANKNIFTY'
-        : 'NSE:NIFTY'
-
-  return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-amber-100/90">
-        <strong className="text-amber-300">Educational model:</strong> Spot / PCR / targets below are{' '}
-        <strong>sample scenario cards</strong>, not guaranteed predictions. Wire Angel LIVE LTP on Decision
-        Desk for real index prints. TradingView embed is third-party chart only.
-      </div>
-
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl">
-        <div>
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-400/10 text-amber-300 border border-amber-400/30">
-              F&amp;O SCENARIO SUITE
-            </span>
-            <span className="text-xs text-amber-200/80 font-mono font-semibold">MODEL READ · NOT LIVE AI</span>
-          </div>
-          <h2 className="text-2xl font-bold text-[#F1F5F9] font-serif">Intraday Trajectory Matrix</h2>
-          <p className="text-xs text-[#94A3B8]">
-            Scenario bands for learning · invalidation always shown · no guaranteed targets
-          </p>
-        </div>
-        <div className="flex items-center gap-2 bg-[#0B0F19] p-1.5 rounded-xl border border-amber-500/20">
-          {(['NIFTY', 'BANKNIFTY', 'SENSEX'] as const).map((asset) => (
-            <button
-              key={asset}
-              type="button"
-              onClick={() => setSelectedAsset(asset)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
-                selectedAsset === asset
-                  ? 'bg-amber-400 text-black shadow-md'
-                  : 'text-[#94A3B8] hover:text-[#F1F5F9]'
-              }`}
-            >
-              {asset}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 font-mono">
-        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Underlying Spot</span>
-          <span className="text-lg font-bold text-[#F1F5F9]">{assetMetrics[selectedAsset].spot}</span>
-          <span className="text-xs text-emerald-400 block">{assetMetrics[selectedAsset].change}</span>
-        </div>
-        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">VWAP (sample)</span>
-          <span className="text-lg font-bold text-amber-300">{assetMetrics[selectedAsset].vwap}</span>
-          <span className="text-xs text-[#94A3B8] block">Illustrative</span>
-        </div>
-        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Put/Call Ratio</span>
-          <span className="text-lg font-bold text-emerald-400">{assetMetrics[selectedAsset].pcr}</span>
-          <span className="text-xs text-[#94A3B8] block">Sample</span>
-        </div>
-        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Max Pain Level</span>
-          <span className="text-lg font-bold text-[#F1F5F9]">{assetMetrics[selectedAsset].maxPain}</span>
-          <span className="text-xs text-[#94A3B8] block">Sample</span>
-        </div>
-        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl col-span-2 md:col-span-1">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Scenario Stance</span>
-          <span className="text-lg font-bold text-emerald-400 flex items-center gap-1">
-            LONG BIAS <ArrowUpRight className="w-4 h-4" />
-          </span>
-          <span className="text-xs text-[#94A3B8] block">Illustrative score</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {projections.map((proj, idx) => (
-          <div
-            key={idx}
-            className="bg-[#141A28] border border-amber-500/30 p-5 rounded-2xl space-y-4 hover:border-amber-400 transition-all"
-          >
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-mono font-bold text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-md">
-                {proj.timeframe}
-              </span>
-              <span className="text-xs font-mono font-semibold text-emerald-400">
-                {proj.confidence}% model weight
-              </span>
-            </div>
-            <div>
-              <span className="text-[11px] text-[#94A3B8] font-mono uppercase block">
-                Scenario target band
-              </span>
-              <p className="text-xl font-bold font-mono text-[#F1F5F9] mt-0.5">{proj.targetZone}</p>
-            </div>
-            <div className="text-xs text-[#CBD5E1] leading-relaxed border-t border-amber-500/10 pt-3">
-              <strong className="text-amber-200">Read: </strong>
-              {proj.driver}
-            </div>
-            <div className="bg-[#0B0F19] p-3 rounded-lg border border-rose-500/20 text-xs font-mono flex items-center justify-between text-rose-300">
-              <span>Invalidation:</span>
-              <span className="font-bold">{proj.invalidation}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-[#141A28] border border-amber-500/20 p-4 rounded-2xl space-y-3">
-        <div className="flex justify-between items-center">
-          <h3 className="text-sm font-bold text-[#F1F5F9] font-serif flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-amber-300" /> TradingView chart (embed)
-          </h3>
-          <span className="text-xs font-mono text-[#94A3B8]">Third-party · not Novaforge data</span>
-        </div>
-        <div className="w-full h-[480px] rounded-xl overflow-hidden border border-[#1E293B]">
-          <iframe
-            title="TradingView Chart"
-            className="w-full h-full border-none"
-            src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(
-              tvSymbol,
-            )}&interval=5&theme=dark&style=1&timezone=Asia%2FKolkata`}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// --- STOCK & ETF UNIVERSAL SEARCH DESK ---
-export const UniversalSearchDesk: React.FC = () => {
+export const UniversalStockScreener: React.FC = () => {
+  const [filter, setFilter] = useState<'ALL' | 'HIGH_ORDER_BOOK' | '52W_HIGH' | '52W_LOW' | 'SPECULATIVE'>('ALL')
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<'ALL' | 'EQUITY' | 'COMMODITY_ETF' | 'THEMATIC'>('ALL')
-  const assets = [
+  const [selectedStock, setSelectedStock] = useState<StockItem | null>(null)
+
+  const stockArsenal: StockItem[] = [
     {
-      ticker: 'RELIANCE',
-      name: 'Reliance Industries',
-      type: 'EQUITY',
-      price: '₹2,984.50',
-      change: '+1.15%',
-      signal: 'Bullish Momentum',
-      pe: '28.4',
-      w52h: '₹3,024',
+      ticker: 'COCHINSHIP',
+      name: 'Cochin Shipyard Ltd.',
+      sector: 'Defence / Marine',
+      price: '₹1,940.50',
+      change: '+4.85%',
+      isBull: true,
+      category: 'HIGH_ORDER_BOOK',
+      orderBook: '₹22,000 Cr',
+      annualRevenue: '₹3,800 Cr',
+      ratio: '5.8x Revenue Backlog',
+      pe: '44.2',
+      w52High: '₹2,100.00',
+      w52Low: '₹435.00',
+      thesis:
+        'Order backlog exceeds annual turnover by almost 6x. Sample educational card — verify live filings.',
     },
     {
-      ticker: 'SILVERBEES',
-      name: 'Nippon Silver ETF',
-      type: 'COMMODITY_ETF',
-      price: '₹88.50',
-      change: '+1.85%',
-      signal: 'Breakout Accumulation',
-      pe: 'N/A',
-      w52h: '₹94',
+      ticker: 'NHPC',
+      name: 'NHPC Ltd. (Hydro Power)',
+      sector: 'Power / Utilities',
+      price: '₹98.40',
+      change: '+2.15%',
+      isBull: true,
+      category: 'HIGH_ORDER_BOOK',
+      orderBook: '₹18,500 Cr (Pipeline)',
+      annualRevenue: '₹9,800 Cr',
+      ratio: '1.9x Revenue Capex',
+      pe: '13.4',
+      w52High: '₹118.40',
+      w52Low: '₹48.20',
+      thesis: 'Hydro build-out narrative sample. Not a buy recommendation.',
     },
     {
-      ticker: 'TATAELXSI',
-      name: 'Tata Elxsi (Semiconductor/Auto)',
-      type: 'THEMATIC',
-      price: '₹7,150.00',
-      change: '+2.40%',
-      signal: 'Reversal Formation',
-      pe: '54.2',
-      w52h: '₹9,200',
+      ticker: 'MAZDOCK',
+      name: 'Mazagon Dock Shipbuilders',
+      sector: 'Defence / Submarines',
+      price: '₹4,450.00',
+      change: '+3.20%',
+      isBull: true,
+      category: 'HIGH_ORDER_BOOK',
+      orderBook: '₹38,500 Cr',
+      annualRevenue: '₹9,400 Cr',
+      ratio: '4.1x Revenue Backlog',
+      pe: '38.6',
+      w52High: '₹5,860.00',
+      w52Low: '₹1,740.00',
+      thesis: 'Defence order-book sample narrative. Verify exchange data.',
     },
     {
-      ticker: 'GOLDBEES',
-      name: 'Nippon Gold ETF',
-      type: 'COMMODITY_ETF',
-      price: '₹62.10',
-      change: '+0.40%',
-      signal: 'Hedging Safe Haven',
-      pe: 'N/A',
-      w52h: '₹66',
+      ticker: 'DIXON',
+      name: 'Dixon Technologies Ltd.',
+      sector: 'EMS / Electronics',
+      price: '₹12,450.00',
+      change: '+3.10%',
+      isBull: true,
+      category: '52W_HIGH',
+      orderBook: 'PLI Backed Pipeline',
+      annualRevenue: '₹17,600 Cr',
+      ratio: 'Near 52W ATH',
+      pe: '104.2',
+      w52High: '₹13,200.00',
+      w52Low: '₹4,800.00',
+      thesis: 'Near-high sample card. High PE risk noted.',
     },
     {
       ticker: 'HDFCBANK',
       name: 'HDFC Bank Ltd.',
-      type: 'EQUITY',
+      sector: 'Private Banking',
       price: '₹1,452.10',
       change: '-0.42%',
-      signal: 'Base Building',
+      isBull: false,
+      category: '52W_LOW',
+      orderBook: 'N/A',
+      annualRevenue: '₹1,85,000 Cr',
+      ratio: 'Near 52W Low zone (sample)',
       pe: '18.2',
-      w52h: '₹1,757',
+      w52High: '₹1,757.50',
+      w52Low: '₹1,363.55',
+      thesis: 'Value-zone sample narrative. Not advice.',
     },
     {
-      ticker: 'DIXON',
-      name: 'Dixon Tech (Electronics/EMS)',
-      type: 'THEMATIC',
-      price: '₹12,450.00',
-      change: '+3.10%',
-      signal: 'Institutional Expansion',
-      pe: '104.2',
-      w52h: '₹13,200',
+      ticker: 'SUZLON',
+      name: 'Suzlon Energy Ltd.',
+      sector: 'Renewable Power',
+      price: '₹74.50',
+      change: '+5.00%',
+      isBull: true,
+      category: 'SPECULATIVE',
+      orderBook: '3.8 GW (~₹14,000 Cr)',
+      annualRevenue: '₹6,500 Cr',
+      ratio: 'High Beta Momentum',
+      pe: '68.4',
+      w52High: '₹86.00',
+      w52Low: '₹22.50',
+      thesis: 'High-beta sample. Elevated volatility.',
     },
   ]
-  const filtered = assets.filter((item) => {
-    const matchesQuery =
-      item.ticker.toLowerCase().includes(query.toLowerCase()) ||
-      item.name.toLowerCase().includes(query.toLowerCase())
-    const matchesCategory = category === 'ALL' || item.type === category
-    return matchesQuery && matchesCategory
+
+  const filtered = stockArsenal.filter((s) => {
+    const matchCat = filter === 'ALL' || s.category === filter
+    const matchSearch =
+      s.ticker.toLowerCase().includes(query.toLowerCase()) ||
+      s.name.toLowerCase().includes(query.toLowerCase())
+    return matchCat && matchSearch
   })
+
   return (
     <div className="space-y-6">
-      <p className="text-xs text-amber-200/80 border border-amber-500/20 rounded-xl px-3 py-2 bg-amber-500/5">
-        Sample registry prices — not live quotes. Use Groww / IND Money for execution prices.
+      <p className="text-xs text-amber-200/80 border border-[#D4AF37]/25 rounded-xl px-3 py-2 bg-[#D4AF37]/5">
+        Sample registry · prices & order books are educational templates, not live exchange ticks.
       </p>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-amber-500/20 pb-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#D4AF37]/20 pb-4">
         <div>
-          <h2 className="text-xl font-bold text-[#F1F5F9] font-serif">Universal Market Registry</h2>
-          <p className="text-xs text-[#94A3B8]">Equities, precious metal ETFs, and thematic names</p>
+          <h2 className="text-xl font-bold font-serif text-[#FDFBF7]">Sovereign Stock Radar</h2>
+          <p className="text-xs text-[#94A3B8]">Filter by backlog narrative, 52W extremes, or momentum</p>
         </div>
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-amber-300" />
+          <Search className="w-4 h-4 absolute left-3 top-3 text-[#D4AF37]" />
           <input
             type="text"
-            placeholder="Search stock, silver, gold, chips..."
+            placeholder="Search symbol (e.g. NHPC, COCHIN)..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-[#141A28] border border-amber-500/30 rounded-xl pl-9 pr-4 py-2 text-xs text-[#F1F5F9] focus:outline-none focus:border-amber-400 font-mono"
+            className="w-full bg-[#111F38] border border-[#D4AF37]/30 rounded-xl pl-9 pr-4 py-2 text-xs text-[#FDFBF7] focus:outline-none focus:border-[#D4AF37] font-mono"
           />
         </div>
       </div>
       <div className="flex gap-2 font-mono text-xs overflow-x-auto pb-2">
-        {(['ALL', 'EQUITY', 'COMMODITY_ETF', 'THEMATIC'] as const).map((cat) => (
+        {(
+          [
+            { id: 'ALL' as const, label: 'All Equities' },
+            { id: 'HIGH_ORDER_BOOK' as const, label: 'High Order Book' },
+            { id: '52W_HIGH' as const, label: '52W High ATH' },
+            { id: '52W_LOW' as const, label: '52W Low Value' },
+            { id: 'SPECULATIVE' as const, label: 'High Beta Momentum' },
+          ] as const
+        ).map((cat) => (
           <button
-            key={cat}
+            key={cat.id}
             type="button"
-            onClick={() => setCategory(cat)}
-            className={`px-3 py-1.5 rounded-lg border transition-all ${
-              category === cat
-                ? 'bg-amber-400 border-amber-400 text-black font-bold'
-                : 'bg-[#141A28] border-amber-500/20 text-[#94A3B8] hover:text-[#F1F5F9]'
+            onClick={() => setFilter(cat.id)}
+            className={`px-3.5 py-2 rounded-xl border transition-all shrink-0 ${
+              filter === cat.id
+                ? 'bg-[#D4AF37] text-[#070E1C] font-bold border-[#D4AF37]'
+                : 'bg-[#111F38] border-[#D4AF37]/20 text-[#94A3B8] hover:text-[#FDFBF7]'
             }`}
           >
-            {cat.replace('_', ' ')}
+            {cat.label}
           </button>
         ))}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
-        {filtered.map((item) => (
+        {filtered.map((stock) => (
           <div
-            key={item.ticker}
-            className="bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl space-y-4 hover:border-amber-400 transition-all"
+            key={stock.ticker}
+            role="button"
+            tabIndex={0}
+            onClick={() => setSelectedStock(stock)}
+            onKeyDown={(e) => e.key === 'Enter' && setSelectedStock(stock)}
+            className="bg-[#111F38] border border-[#D4AF37]/25 p-5 rounded-2xl space-y-4 hover:border-[#D4AF37] hover:scale-[1.01] cursor-pointer transition-all shadow-md"
           >
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[10px] text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded font-bold">
-                  {item.type}
+                <span className="text-[10px] text-[#D4AF37] bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-2 py-0.5 rounded font-bold">
+                  {stock.sector}
                 </span>
-                <h3 className="text-lg font-bold text-[#F1F5F9] font-sans mt-1">{item.name}</h3>
-                <span className="text-xs text-[#94A3B8]">{item.ticker}.NS</span>
+                <h3 className="text-lg font-bold text-[#FDFBF7] font-sans mt-1.5">{stock.name}</h3>
+                <span className="text-xs text-[#94A3B8]">NSE: {stock.ticker}</span>
               </div>
               <div className="text-right">
-                <span className="text-lg font-bold text-[#F1F5F9] block">{item.price}</span>
-                <span
-                  className={`text-xs font-bold ${
-                    item.change.startsWith('+') ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
-                >
-                  {item.change}
+                <span className="text-lg font-bold text-[#FDFBF7] block">{stock.price}</span>
+                <span className={`text-xs font-bold ${stock.isBull ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {stock.change}
                 </span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 bg-[#0B0F19] p-3 rounded-lg border border-[#1E293B] text-xs">
-              <div>
-                <span className="text-[10px] text-[#94A3B8] block">52W High</span>
-                <span className="text-[#F1F5F9] font-bold">{item.w52h}</span>
+            <div className="bg-[#0A1224] p-3 rounded-xl border border-[#D4AF37]/15 text-xs space-y-1">
+              <div className="flex justify-between text-[#94A3B8]">
+                <span>Order Book:</span>
+                <span className="text-[#D4AF37] font-bold">{stock.orderBook}</span>
               </div>
-              <div>
-                <span className="text-[10px] text-[#94A3B8] block">Valuation P/E</span>
-                <span className="text-amber-300 font-bold">{item.pe}</span>
+              <div className="flex justify-between text-[#94A3B8]">
+                <span>Core Metric:</span>
+                <span className="text-[#FDFBF7] font-bold">{stock.ratio}</span>
               </div>
             </div>
-            <div className="border-t border-amber-500/10 pt-3 flex items-center justify-between text-xs">
-              <span className="text-[#94A3B8]">Scenario read:</span>
-              <span className="text-emerald-400 font-bold">{item.signal}</span>
-            </div>
+            <p className="text-xs font-sans text-[#CBD5E1] line-clamp-2 leading-relaxed border-t border-[#D4AF37]/15 pt-3">
+              {stock.thesis}
+            </p>
           </div>
         ))}
+      </div>
+
+      {selectedStock && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111F38] border-2 border-[#D4AF37] w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-5 font-mono relative">
+            <button
+              type="button"
+              onClick={() => setSelectedStock(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg bg-[#0A1224] text-[#94A3B8] hover:text-[#FDFBF7] border border-[#D4AF37]/20 text-xs"
+            >
+              Close
+            </button>
+            <div className="flex justify-between items-start border-b border-[#D4AF37]/20 pb-4 pr-12">
+              <div>
+                <span className="text-[10px] text-[#D4AF37] bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-2 py-0.5 rounded font-bold">
+                  {selectedStock.sector}
+                </span>
+                <h3 className="text-2xl font-bold font-serif text-[#FDFBF7] mt-1">{selectedStock.name}</h3>
+                <span className="text-xs text-[#94A3B8]">NSE: {selectedStock.ticker}.NS</span>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-bold text-[#FDFBF7] block">{selectedStock.price}</span>
+                <span
+                  className={`text-xs font-bold ${selectedStock.isBull ? 'text-emerald-400' : 'text-rose-400'}`}
+                >
+                  {selectedStock.change}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              {[
+                ['P/E', selectedStock.pe],
+                ['52W High', selectedStock.w52High],
+                ['52W Low', selectedStock.w52Low],
+                ['Order Book', selectedStock.orderBook],
+              ].map(([k, v]) => (
+                <div key={k} className="bg-[#0A1224] p-3 rounded-xl border border-[#D4AF37]/20">
+                  <span className="text-[#94A3B8] block text-[10px]">{k}</span>
+                  <span className="text-[#D4AF37] font-bold text-sm">{v}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-[#0A1224] p-4 rounded-xl border border-emerald-500/30 text-xs font-sans space-y-2">
+              <span className="font-bold text-emerald-400 font-mono flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4" /> Educational read
+              </span>
+              <p className="text-[#CBD5E1] leading-relaxed">{selectedStock.thesis}</p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==========================================
+// 2. F&O MATRIX
+// ==========================================
+export const FoDecisionDesk: React.FC = () => {
+  const [underlying, setUnderlying] = useState<'NIFTY' | 'BANKNIFTY' | 'SENSEX'>('NIFTY')
+  const snapshotData = {
+    NIFTY: { spot: '23,897.70', change: '+0.10%', pcr: '1.14', vwap: '23,880.50' },
+    BANKNIFTY: { spot: '51,240.50', change: '+0.34%', pcr: '0.92', vwap: '51,190.00' },
+    SENSEX: { spot: '76,515.43', change: '+0.46%', pcr: '1.05', vwap: '76,430.00' },
+  }
+  const tv =
+    underlying === 'SENSEX' ? 'BSE:SENSEX' : underlying === 'BANKNIFTY' ? 'NSE:BANKNIFTY' : 'NSE:NIFTY'
+  return (
+    <div className="space-y-6 font-mono">
+      <p className="text-xs text-amber-200/80 border border-[#D4AF37]/25 rounded-xl px-3 py-2 bg-[#D4AF37]/5">
+        Sample scenario metrics · TradingView is third-party chart · not guaranteed predictions
+      </p>
+      <div className="bg-[#111F38] border border-[#D4AF37]/30 p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">Intraday Scenario Matrix</h2>
+          <p className="text-xs text-[#94A3B8]">Educational VWAP / PCR style cards</p>
+        </div>
+        <div className="flex items-center gap-2 bg-[#0A1224] p-1.5 rounded-xl border border-[#D4AF37]/30">
+          {(['NIFTY', 'BANKNIFTY', 'SENSEX'] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setUnderlying(item)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                underlying === item
+                  ? 'bg-[#D4AF37] text-[#070E1C] shadow-md'
+                  : 'text-[#94A3B8] hover:text-[#FDFBF7]'
+              }`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-[#111F38] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] block uppercase">Spot (sample)</span>
+          <span className="text-xl font-bold text-[#FDFBF7]">{snapshotData[underlying].spot}</span>
+          <span className="text-xs text-emerald-400 font-semibold block">{snapshotData[underlying].change}</span>
+        </div>
+        <div className="bg-[#111F38] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] block uppercase">VWAP (sample)</span>
+          <span className="text-xl font-bold text-[#D4AF37]">{snapshotData[underlying].vwap}</span>
+        </div>
+        <div className="bg-[#111F38] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] block uppercase">PCR (sample)</span>
+          <span className="text-xl font-bold text-emerald-400">{snapshotData[underlying].pcr}</span>
+        </div>
+        <div className="bg-[#111F38] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] block uppercase">Bias tag</span>
+          <span className="text-lg font-bold text-[#D4AF37] block">Illustrative</span>
+        </div>
+      </div>
+      <div className="bg-[#111F38] border border-[#D4AF37]/30 p-4 rounded-2xl">
+        <div className="w-full h-[500px] rounded-xl overflow-hidden border border-[#1E2E4E]">
+          <iframe
+            title="TradingView Candle View"
+            className="w-full h-full border-none"
+            src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(tv)}&interval=5&theme=dark&style=1&timezone=Asia%2FKolkata`}
+          />
+        </div>
       </div>
     </div>
   )
 }
 
-// --- NEWS DESK ---
-export const RealtimeNewsDesk: React.FC = () => {
-  const newsStream = [
+// ========================================================
+// 3. FII DII
+// ========================================================
+export const InstitutionalFlowsDesk: React.FC = () => {
+  const detailedFlows = [
     {
-      time: 'Sample',
-      headline: 'RBI Stays Focused on Rupee Stability as Foreign Inflows Solidify Base',
-      sector: 'MACRO / BANKING',
-      impact: 'BULLISH',
-      summary:
-        'Central bank liquidity absorption operations remain balanced, keeping overnight interbank rates anchored.',
+      date: 'Recent Completed Session',
+      fiiGrossBuy: '₹13,857.58 Cr',
+      fiiGrossSell: '₹16,969.52 Cr',
+      fiiNet: '-₹3,111.94 Cr',
+      diiGrossBuy: '₹19,254.19 Cr',
+      diiGrossSell: '₹10,324.07 Cr',
+      diiNet: '+₹8,930.12 Cr',
+      netMarketAbsorption: '+₹5,818.18 Cr',
     },
     {
-      time: 'Sample',
-      headline: 'Global Silver Bullion Moves on Industrial Green Tech Demand',
-      sector: 'COMMODITIES & METALS',
-      impact: 'BULLISH METALS',
-      summary:
-        'Educational card — verify live silver/ETF prices on exchange apps before acting.',
+      date: 'Prior Completed Session',
+      fiiGrossBuy: '₹13,596.04 Cr',
+      fiiGrossSell: '₹15,941.91 Cr',
+      fiiNet: '-₹2,345.87 Cr',
+      diiGrossBuy: '₹17,063.65 Cr',
+      diiGrossSell: '₹12,086.19 Cr',
+      diiNet: '+₹4,977.46 Cr',
+      netMarketAbsorption: '+₹2,631.59 Cr',
     },
     {
-      time: 'Sample',
-      headline: 'Crude Softens on Demand Forecasts',
-      sector: 'ENERGY & PAINTS',
-      impact: 'POSITIVE FOR INDIA',
-      summary:
-        'Lower crude can ease import bill pressure; company margins still stock-specific.',
+      date: 'Prior Session -2',
+      fiiGrossBuy: '₹14,210.30 Cr',
+      fiiGrossSell: '₹15,102.50 Cr',
+      fiiNet: '-₹892.20 Cr',
+      diiGrossBuy: '₹14,980.25 Cr',
+      diiGrossSell: '₹11,430.10 Cr',
+      diiNet: '+₹3,550.15 Cr',
+      netMarketAbsorption: '+₹2,657.95 Cr',
     },
   ]
   return (
-    <div className="space-y-6">
-      <div className="border-b border-amber-500/20 pb-4 flex justify-between items-center flex-wrap gap-2">
-        <div>
-          <h2 className="text-xl font-bold text-[#F1F5F9] font-serif">Causal Financial Wire</h2>
-          <p className="text-xs text-[#94A3B8]">Sample impact cards · not a live news API</p>
+    <div className="space-y-6 font-mono">
+      <p className="text-xs text-amber-200/80 border border-[#D4AF37]/25 rounded-xl px-3 py-2 bg-[#D4AF37]/5">
+        Sample EOD-style figures for UI layout · replace with official NSE provisional when wired
+      </p>
+      <div className="border-b border-[#D4AF37]/20 pb-4">
+        <h2 className="text-xl font-bold font-serif text-[#FDFBF7]">Institutional Liquidity Tracker</h2>
+        <p className="text-xs text-[#94A3B8]">Gross buy / sell / net absorption (sample table)</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-[#111F38] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] block uppercase">FII Net (sample)</span>
+          <span className="text-xl font-bold text-rose-400 block">-₹3,111.94 Cr</span>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-mono text-amber-300">
-          SAMPLE FEED
+        <div className="bg-[#111F38] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] block uppercase">DII Net (sample)</span>
+          <span className="text-xl font-bold text-emerald-400 block">+₹8,930.12 Cr</span>
+        </div>
+        <div className="bg-[#111F38] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] block uppercase">Combined Net (sample)</span>
+          <span className="text-xl font-bold text-[#D4AF37] block">+₹5,818.18 Cr</span>
+        </div>
+      </div>
+      <div className="bg-[#111F38] border border-[#D4AF37]/30 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-[#D4AF37]/15 bg-[#0A1224] text-[#94A3B8]">
+              <tr>
+                <th className="p-3.5">SESSION</th>
+                <th className="p-3.5">FII BUY</th>
+                <th className="p-3.5">FII SELL</th>
+                <th className="p-3.5">FII NET</th>
+                <th className="p-3.5">DII BUY</th>
+                <th className="p-3.5">DII SELL</th>
+                <th className="p-3.5">DII NET</th>
+                <th className="p-3.5">COMBINED</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#D4AF37]/10 text-[#FDFBF7]">
+              {detailedFlows.map((row, idx) => (
+                <tr key={idx} className="hover:bg-[#D4AF37]/5">
+                  <td className="p-3.5 font-sans font-medium">{row.date}</td>
+                  <td className="p-3.5 text-[#94A3B8]">{row.fiiGrossBuy}</td>
+                  <td className="p-3.5 text-[#94A3B8]">{row.fiiGrossSell}</td>
+                  <td className="p-3.5 text-rose-400 font-bold">{row.fiiNet}</td>
+                  <td className="p-3.5 text-[#94A3B8]">{row.diiGrossBuy}</td>
+                  <td className="p-3.5 text-[#94A3B8]">{row.diiGrossSell}</td>
+                  <td className="p-3.5 text-emerald-400 font-bold">{row.diiNet}</td>
+                  <td className="p-3.5 text-[#D4AF37] font-bold">{row.netMarketAbsorption}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ========================================================
+// 4. NEWS WIRE
+// ========================================================
+export const VisualNewsWireDesk: React.FC = () => {
+  const [filterRegion, setFilterRegion] = useState<'ALL' | 'INDIA' | 'GLOBAL'>('ALL')
+  const newsItems = [
+    {
+      title: 'Crude softens on demand signals (sample)',
+      source: 'SAMPLE DESK',
+      region: 'GLOBAL' as const,
+      time: 'Sample',
+      impact: 'BULLISH INDIA',
+      imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
+      points: [
+        'Educational card only — verify live commodity prices before trading.',
+        'Lower crude can ease import bill pressure in some scenarios.',
+        'Stock impact remains company-specific.',
+      ],
+    },
+    {
+      title: 'Domestic SIP flows narrative (sample)',
+      source: 'SAMPLE DESK',
+      region: 'INDIA' as const,
+      time: 'Sample',
+      impact: 'STRONG BULLISH',
+      imageUrl: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80',
+      points: [
+        'Illustrative domestic flow narrative.',
+        'Not official AMFI print.',
+        'Use official sources for decisions.',
+      ],
+    },
+    {
+      title: 'Global rates path (sample)',
+      source: 'SAMPLE DESK',
+      region: 'GLOBAL' as const,
+      time: 'Sample',
+      impact: 'NEUTRAL',
+      imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80',
+      points: [
+        'Sample macro card.',
+        'EM risk appetite themes are illustrative.',
+        'Not a forecast.',
+      ],
+    },
+  ]
+  const filteredNews = newsItems.filter((n) => filterRegion === 'ALL' || n.region === filterRegion)
+  return (
+    <div className="space-y-6">
+      <div className="border-b border-[#D4AF37]/20 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold font-serif text-[#FDFBF7]">Multi-Source Media Wire</h2>
+          <p className="text-xs text-[#94A3B8]">Sample visual cards · not a live news API</p>
+        </div>
+        <div className="flex gap-2 font-mono text-xs">
+          {(['ALL', 'INDIA', 'GLOBAL'] as const).map((reg) => (
+            <button
+              key={reg}
+              type="button"
+              onClick={() => setFilterRegion(reg)}
+              className={`px-3 py-1.5 rounded-lg border transition-all ${
+                filterRegion === reg
+                  ? 'bg-[#D4AF37] text-[#070E1C] font-bold border-[#D4AF37]'
+                  : 'bg-[#111F38] border-[#D4AF37]/20 text-[#94A3B8]'
+              }`}
+            >
+              {reg}
+            </button>
+          ))}
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {newsStream.map((item, idx) => (
+        {filteredNews.map((item, idx) => (
           <div
             key={idx}
-            className="bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-400 transition-all"
+            className="bg-[#111F38] border border-[#D4AF37]/25 rounded-2xl overflow-hidden flex flex-col hover:border-[#D4AF37] transition-all"
           >
-            <div className="space-y-3">
-              <div className="flex justify-between items-center text-[10px] font-mono">
-                <span className="text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded font-bold">
-                  {item.sector}
-                </span>
-                <span className="text-[#94A3B8]">{item.time}</span>
+            <div className="h-40 w-full relative overflow-hidden bg-[#0A1224]">
+              <img src={item.imageUrl} alt="" className="w-full h-full object-cover" />
+              <div className="absolute top-3 left-3 bg-[#070E1C]/90 border border-[#D4AF37]/40 px-2.5 py-0.5 rounded-md text-[10px] font-mono text-[#D4AF37] font-bold">
+                {item.source}
               </div>
-              <h3 className="text-base font-bold text-[#F1F5F9] leading-snug font-sans">
-                {item.headline}
-              </h3>
-              <p className="text-xs text-[#CBD5E1] leading-relaxed">{item.summary}</p>
             </div>
-            <div className="pt-4 border-t border-amber-500/10 flex justify-between items-center text-xs font-mono mt-4">
-              <span className="text-[#94A3B8]">Bias tag:</span>
-              <span className="text-emerald-400 font-bold">{item.impact}</span>
+            <div className="p-5 space-y-3 flex-1">
+              <h3 className="text-base font-bold text-[#FDFBF7] font-serif leading-snug">{item.title}</h3>
+              <ul className="space-y-1.5 text-xs text-[#CBD5E1]">
+                {item.points.map((pt, pIdx) => (
+                  <li key={pIdx} className="flex gap-1.5">
+                    <span className="text-[#D4AF37]">▪</span>
+                    <span>{pt}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="p-4 bg-[#0A1224] border-t border-[#D4AF37]/15 flex justify-between text-xs font-mono">
+              <span className="text-[#94A3B8]">{item.impact}</span>
+              <span className="text-[#D4AF37] flex items-center gap-1">
+                Sample <ExternalLink className="w-3 h-3" />
+              </span>
             </div>
           </div>
         ))}
@@ -425,145 +553,246 @@ export const RealtimeNewsDesk: React.FC = () => {
   )
 }
 
-/* Route aliases so App.tsx never breaks */
+// ========================================================
+// 5. ADVISOR CONSENSUS
+// ========================================================
+export const FinancialAdvisorConsensus: React.FC = () => {
+  const recommendations = [
+    {
+      ticker: 'RELIANCE',
+      company: 'Reliance Industries',
+      agency: 'Sample Desk',
+      rating: 'OVERWEIGHT',
+      currentPrice: '₹2,984.50',
+      targetPrice: '₹3,420.00',
+      upside: '+14.6%',
+      catalyst: 'Sample catalyst text only.',
+    },
+    {
+      ticker: 'COCHINSHIP',
+      company: 'Cochin Shipyard Ltd.',
+      agency: 'Sample Desk',
+      rating: 'BUY',
+      currentPrice: '₹1,940.50',
+      targetPrice: '₹2,280.00',
+      upside: '+17.5%',
+      catalyst: 'Sample catalyst text only.',
+    },
+    {
+      ticker: 'HDFCBANK',
+      company: 'HDFC Bank Ltd.',
+      agency: 'Sample Desk',
+      rating: 'BUY',
+      currentPrice: '₹1,452.10',
+      targetPrice: '₹1,850.00',
+      upside: '+27.4%',
+      catalyst: 'Sample catalyst text only.',
+    },
+    {
+      ticker: 'TCS',
+      company: 'Tata Consultancy Services',
+      agency: 'Sample Desk',
+      rating: 'NEUTRAL',
+      currentPrice: '₹4,180.00',
+      targetPrice: '₹4,300.00',
+      upside: '+2.8%',
+      catalyst: 'Sample catalyst text only.',
+    },
+  ]
+  return (
+    <div className="space-y-6 font-mono">
+      <p className="text-xs text-amber-200/80 border border-[#D4AF37]/25 rounded-xl px-3 py-2 bg-[#D4AF37]/5">
+        Sample targets only · not real broker research · verify official reports
+      </p>
+      <div className="border-b border-[#D4AF37]/20 pb-4">
+        <h2 className="text-xl font-bold font-serif text-[#FDFBF7]">Institutional Consensus Board</h2>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {recommendations.map((rec, idx) => (
+          <div
+            key={idx}
+            className="bg-[#111F38] border border-[#D4AF37]/25 p-5 rounded-2xl space-y-4 hover:border-[#D4AF37] transition-all"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] text-[#D4AF37] bg-[#D4AF37]/10 border border-[#D4AF37]/30 px-2 py-0.5 rounded font-bold">
+                  {rec.agency}
+                </span>
+                <h3 className="text-lg font-bold text-[#FDFBF7] font-sans mt-1.5">{rec.company}</h3>
+                <span className="text-xs text-[#94A3B8]">{rec.ticker}.NS</span>
+              </div>
+              <span className="text-xs bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-1 rounded font-bold">
+                {rec.rating}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-3 bg-[#0A1224] rounded-xl border border-[#D4AF37]/15 text-xs">
+              <div>
+                <span className="text-[#94A3B8] block text-[10px]">CURRENT (sample)</span>
+                <span className="text-[#FDFBF7] font-bold">{rec.currentPrice}</span>
+              </div>
+              <div>
+                <span className="text-[#94A3B8] block text-[10px]">TARGET (sample)</span>
+                <span className="text-[#D4AF37] font-bold">{rec.targetPrice}</span>
+              </div>
+            </div>
+            <p className="text-xs font-sans text-[#CBD5E1] border-t border-[#D4AF37]/15 pt-2">
+              <strong className="text-[#D4AF37]">Note: </strong>
+              {rec.catalyst}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
+// 6. ETF MATRIX
+// ==========================================
+export const SectorEtfMatrix: React.FC = () => {
+  const etfBaskets = [
+    {
+      name: 'Silver Bullion ETF',
+      inTicker: 'SILVERBEES.NS',
+      usTicker: 'SLV / XAGUSD',
+      inPrice: '₹88.50',
+      usPrice: '$28.40/oz',
+      change: '+1.85%',
+      thesis: 'Sample macro rationale.',
+    },
+    {
+      name: 'Gold Hedge ETF',
+      inTicker: 'GOLDBEES.NS',
+      usTicker: 'GLD / XAUUSD',
+      inPrice: '₹62.10',
+      usPrice: '$2,480/oz',
+      change: '+0.40%',
+      thesis: 'Sample macro rationale.',
+    },
+    {
+      name: 'Semiconductor Hardware',
+      inTicker: 'TATAELXSI / DIXON',
+      usTicker: 'SOXX / NVDA',
+      inPrice: '₹7,150.00',
+      usPrice: '$225.10',
+      change: '+2.40%',
+      thesis: 'Sample macro rationale.',
+    },
+    {
+      name: 'Nifty IT Index ETF',
+      inTicker: 'ITBEES.NS',
+      usTicker: 'QQQ / XLK',
+      inPrice: '₹42.80',
+      usPrice: '$485.00',
+      change: '+0.65%',
+      thesis: 'Sample macro rationale.',
+    },
+  ]
+  return (
+    <div className="space-y-6 font-mono">
+      <div className="border-b border-[#D4AF37]/20 pb-4">
+        <h2 className="text-xl font-bold font-serif text-[#FDFBF7]">Sector & Thematic ETF Desk</h2>
+        <p className="text-xs text-[#94A3B8]">Sample India ↔ global map · not live NAVs</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {etfBaskets.map((item, i) => (
+          <div
+            key={i}
+            className="bg-[#111F38] border border-[#D4AF37]/25 p-5 rounded-2xl space-y-4 hover:border-[#D4AF37] transition-all"
+          >
+            <div className="flex justify-between items-start">
+              <h3 className="text-base font-bold text-[#FDFBF7] font-sans">{item.name}</h3>
+              <span className="text-xs font-bold text-emerald-400">{item.change}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 p-3 bg-[#0A1224] border border-[#D4AF37]/15 rounded-xl text-xs">
+              <div>
+                <span className="text-[#94A3B8] block text-[10px]">INDIAN</span>
+                <span className="text-[#FDFBF7] font-bold block">{item.inTicker}</span>
+                <span className="text-[#D4AF37]">{item.inPrice}</span>
+              </div>
+              <div className="border-l border-[#D4AF37]/15 pl-3">
+                <span className="text-[#94A3B8] block text-[10px]">GLOBAL</span>
+                <span className="text-[#FDFBF7] font-bold block">{item.usTicker}</span>
+                <span className="text-[#D4AF37]">{item.usPrice}</span>
+              </div>
+            </div>
+            <p className="text-xs font-sans text-[#CBD5E1] border-t border-[#D4AF37]/10 pt-2">
+              {item.thesis}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
+// 7. RISK PROTOCOL
+// ==========================================
+export const RiskProtocolDesk: React.FC = () => {
+  return (
+    <div className="space-y-6 font-mono">
+      <div className="border-b border-[#D4AF37]/20 pb-4">
+        <h2 className="text-xl font-bold font-serif text-[#FDFBF7]">Capital & Risk Protocol</h2>
+        <p className="text-xs text-[#94A3B8]">Personal rules checklist · educational</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-[#111F38] border border-[#D4AF37]/25 p-5 rounded-2xl space-y-3">
+          <span className="text-xs text-[#D4AF37] font-bold flex items-center gap-1.5">
+            <ShieldAlert className="w-4 h-4" /> Max loss discipline
+          </span>
+          <p className="text-xs text-[#CBD5E1] font-sans leading-relaxed">
+            Risk only capital you can afford to lose. Prefer fixed % risk per idea.
+          </p>
+        </div>
+        <div className="bg-[#111F38] border border-[#D4AF37]/25 p-5 rounded-2xl space-y-3">
+          <span className="text-xs text-amber-300 font-bold flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4" /> Invalidation
+          </span>
+          <p className="text-xs text-[#CBD5E1] font-sans leading-relaxed">
+            Every scenario needs a level where the idea is wrong — exit, do not average blindly.
+          </p>
+        </div>
+        <div className="bg-[#111F38] border border-[#D4AF37]/25 p-5 rounded-2xl space-y-3">
+          <span className="text-xs text-emerald-400 font-bold flex items-center gap-1.5">
+            <CheckCircle className="w-4 h-4" /> NO TRADE is valid
+          </span>
+          <p className="text-xs text-[#CBD5E1] font-sans leading-relaxed">
+            Standing aside when data is sample/DEMO or confidence is low is a feature.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Back-compat aliases */
+export function UniversalSearchDesk() {
+  return <UniversalStockScreener />
+}
+export function RealtimeNewsDesk() {
+  return <VisualNewsWireDesk />
+}
 export function StockSearchPage() {
-  return <UniversalSearchDesk />
+  return <UniversalStockScreener />
 }
 export function StockDetailPage() {
-  return <UniversalSearchDesk />
+  return <UniversalStockScreener />
 }
 export function NewsIntelPage() {
-  return <RealtimeNewsDesk />
+  return <VisualNewsWireDesk />
 }
 export function GlobalMacroDesk() {
   return <FoDecisionDesk />
 }
 export function IpoDeskPage() {
   return (
-    <div className="space-y-4 text-[#F1F5F9]">
-      <h2 className="text-xl font-bold font-serif flex items-center gap-2">
-        <Landmark className="w-5 h-5 text-amber-300" /> IPO Desk
-      </h2>
-      <p className="text-xs text-[#94A3B8]">
-        GMP is unofficial. Verify on NSE / SEBI. Educational only.
-      </p>
-      <div className="bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl text-sm">
-        Use official exchange filings for applications and allotments.
-      </div>
+    <div className="text-[#FDFBF7] space-y-2">
+      <h2 className="font-serif text-xl font-bold">IPO Desk</h2>
+      <p className="text-xs text-[#94A3B8]">GMP unofficial · verify NSE / SEBI</p>
     </div>
   )
 }
 
-// --- SOVEREIGN SHELL (tabs) ---
-export const ExtraPages: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'fo' | 'search' | 'news'>('fo')
-  return (
-    <div className="min-h-[70vh] text-[#F1F5F9] font-sans antialiased pb-8">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center">
-          <Zap className="w-5 h-5 text-black" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold tracking-wider font-serif">
-            NOVAFORGE{' '}
-            <span className="text-xs font-mono font-bold text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded ml-1 bg-amber-400/10">
-              SOVEREIGN DESK
-            </span>
-          </h1>
-          <p className="text-[11px] text-[#94A3B8]">Scenarios · registry · sample wire</p>
-        </div>
-      </div>
-      <div className="flex border-b border-amber-500/20 space-x-6 text-xs font-mono font-bold overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setActiveTab('fo')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'fo'
-              ? 'border-amber-400 text-amber-300'
-              : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
-          }`}
-        >
-          <Activity className="w-4 h-4" /> F&amp;O Scenario Matrix
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('search')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'search'
-              ? 'border-amber-400 text-amber-300'
-              : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
-          }`}
-        >
-          <Search className="w-4 h-4" /> Stock &amp; ETF Registry
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('news')}
-          className={`pb-3 flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
-            activeTab === 'news'
-              ? 'border-amber-400 text-amber-300'
-              : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
-          }`}
-        >
-          <Newspaper className="w-4 h-4" /> Market Wire
-        </button>
-      </div>
-      <div className="pt-6">
-        {activeTab === 'fo' && <FoDecisionDesk />}
-        {activeTab === 'search' && <UniversalSearchDesk />}
-        {activeTab === 'news' && <RealtimeNewsDesk />}
-      </div>
-    </div>
-  )
-}
-
-
-
-/** Aliases + ETF matrix for Sovereign Palace App */
-export function UniversalStockScreener() {
-  return <UniversalSearchDesk />
-}
-
-export function InstitutionalFlowsAndNews() {
-  return <RealtimeNewsDesk />
-}
-
-export function SectorEtfMatrix() {
-  const rows = [
-    { name: 'Nifty IT / Technology', inTicker: 'ITBEES / NIFTYIT', usTicker: 'QQQ / XLK', note: 'Global tech risk-on cue for Indian IT' },
-    { name: 'Nifty Metal / Materials', inTicker: 'METAL ETF / HINDCOPPER', usTicker: 'XME / COPX', note: 'Copper & industrial metals cycle' },
-    { name: 'Gold / Silver ETFs', inTicker: 'GOLDBEES / SILVERBEES', usTicker: 'GLD / SLV', note: 'Hedge + industrial silver demand' },
-    { name: 'Banking / Financials', inTicker: 'BANKBEES / PSUBANK', usTicker: 'XLF / KBE', note: 'Rate + credit cycle sensitivity' },
-    { name: 'Energy / Oil proxies', inTicker: 'ONGC / RELIANCE', usTicker: 'USO / XLE', note: 'Crude & refining spreads' },
-  ]
-  return (
-    <div className="space-y-6">
-      <div className="border border-[#D4AF37]/25 bg-[#0F192C] rounded-2xl p-5">
-        <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">Sector & Thematic ETF Matrix</h2>
-        <p className="text-xs text-[#94A3B8] mt-1">
-          Educational India ↔ global baskets · not live NAV ticks · verify on Groww / IND Money
-        </p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {rows.map((r) => (
-          <div key={r.name} className="border border-[#D4AF37]/25 bg-[#0A1326] rounded-2xl p-5 space-y-3">
-            <h3 className="font-serif font-bold text-[#FDFBF7]">{r.name}</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-              <div className="bg-[#070D18] border border-[#D4AF37]/15 rounded-xl p-3">
-                <span className="text-[10px] text-[#94A3B8] block">INDIA</span>
-                <span className="text-[#D4AF37] font-bold">{r.inTicker}</span>
-              </div>
-              <div className="bg-[#070D18] border border-[#D4AF37]/15 rounded-xl p-3">
-                <span className="text-[10px] text-[#94A3B8] block">US / GLOBAL</span>
-                <span className="text-[#D4AF37] font-bold">{r.usTicker}</span>
-              </div>
-            </div>
-            <p className="text-xs text-[#CBD5E1]">{r.note}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
+export const ExtraPages: React.FC = () => <UniversalStockScreener />
 export default ExtraPages
