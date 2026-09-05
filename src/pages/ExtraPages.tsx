@@ -1,482 +1,354 @@
 import React, { useState } from 'react'
 import {
-  Search,
   TrendingUp,
-  TrendingDown,
-  Globe,
-  ShieldAlert,
+  Search,
+  Newspaper,
+  Activity,
+  ArrowUpRight,
+  BarChart3,
+  Zap,
   Landmark,
 } from 'lucide-react'
 
-interface StockMetric {
-  ticker: string
-  name: string
-  exchange: 'NSE' | 'BSE' | 'US'
-  price: string
-  change: string
-  isPositive: boolean
-  pe: string
-  w52High: string
-  w52Low: string
-  volume: string
-  verdict: string
+// --- F&O PREDICTIVE ENGINES (5m / 10m / 15m) ---
+interface IntradayProjection {
+  timeframe: string
+  bias: 'STRONG_BULL' | 'BULL' | 'NEUTRAL' | 'BEAR' | 'STRONG_BEAR'
+  targetZone: string
+  confidence: number
+  driver: string
   invalidation: string
 }
 
-export const GlobalMacroDesk: React.FC = () => {
-  const [activeMarket, setActiveMarket] = useState<'ALL' | 'INDIA' | 'USA'>('ALL')
-  const assets = [
+export const FoDecisionDesk: React.FC = () => {
+  const [selectedAsset, setSelectedAsset] = useState<'NIFTY' | 'BANKNIFTY' | 'SENSEX'>('NIFTY')
+  const assetMetrics = {
+    NIFTY: {
+      spot: '23,897.70',
+      change: '+0.10%',
+      pcr: '1.14',
+      maxPain: '23,900',
+      vwap: '23,882.40',
+    },
+    BANKNIFTY: {
+      spot: '51,240.50',
+      change: '+0.34%',
+      pcr: '0.92',
+      maxPain: '51,000',
+      vwap: '51,180.00',
+    },
+    SENSEX: {
+      spot: '76,515.43',
+      change: '+0.46%',
+      pcr: '1.05',
+      maxPain: '76,500',
+      vwap: '76,420.00',
+    },
+  }
+  const projections: IntradayProjection[] = [
     {
-      name: 'Silver (Physical / ETF)',
-      inTicker: 'SILVERBEES.NS',
-      usTicker: 'SLV / XAGUSD',
-      inPrice: '₹88.50',
-      usPrice: '$28.40/oz',
-      change: '+1.85%',
-      isPositive: true,
-      category: 'Commodity / Precious',
-      thesis:
-        'Industrial demand in green energy & solar panels combined with Fed rate-cut expectations.',
-      indianImpact:
-        'Direct boost for domestic bullion & silver metal fabricators; watch SILVERBEES volume.',
+      timeframe: '5-Minute Scalp Horizon',
+      bias: 'BULL',
+      targetZone: '23,920 – 23,935',
+      confidence: 76,
+      driver: 'Volume delta above VWAP + aggressive Call unwinding at 23,900 strike.',
+      invalidation: '23,875 (Immediate Stop)',
     },
     {
-      name: 'Semiconductors & Tech Hardware',
-      inTicker: 'TATAELXSI.NS / CGPOWER.NS',
-      usTicker: 'SOXX / NVDA',
-      inPrice: '₹7,150.00',
-      usPrice: '$225.10',
-      change: '+2.40%',
-      isPositive: true,
-      category: 'Thematic Tech',
-      thesis: 'Global AI compute infrastructure build-out and enterprise data center expansions.',
-      indianImpact:
-        'Positive sentiment for Indian electronics manufacturing services (EMS) like Dixon, Kaynes, and Tata Elxsi.',
+      timeframe: '15-Minute Momentum Window',
+      bias: 'BULL',
+      targetZone: '23,960 – 23,980',
+      confidence: 68,
+      driver: 'RSI(14) maintaining > 58 with 9/21 EMA golden-cross on 3-min interval.',
+      invalidation: '23,850',
     },
     {
-      name: 'Brent Crude Oil',
-      inTicker: 'MCX CRUDE OIL',
-      usTicker: 'BRENT / USO',
-      inPrice: '₹6,150/bbl',
-      usPrice: '$74.20/bbl',
-      change: '-1.40%',
-      isPositive: false,
-      category: 'Energy / Macro',
-      thesis: 'Subdued factory output from Asia offsetting OPEC+ supply curtailments.',
-      indianImpact:
-        'Major tailwind for Indian macros; compresses current account deficit and benefits Paint (ASIANPAINT) & OMCs.',
-    },
-    {
-      name: 'S&P 500 / Global Benchmark',
-      inTicker: 'MON100 / MASPTOP50',
-      usTicker: 'SPY / VOO',
-      inPrice: '₹182.20',
-      usPrice: '$550.80',
-      change: '+0.45%',
-      isPositive: true,
-      category: 'Index ETF',
-      thesis: 'Resilient corporate earnings and steady US consumer spending prints.',
-      indianImpact: 'Provides positive morning cues for GIFT Nifty opening gaps.',
+      timeframe: 'End-of-Session Trajectory',
+      bias: 'NEUTRAL',
+      targetZone: '23,880 – 23,940 Consolidation',
+      confidence: 55,
+      driver: 'High Put writing at 23,800 creating a solid floor; capped by 24,000 Call OI wall.',
+      invalidation: 'Break below 23,790',
     },
   ]
 
-  const showIndia = activeMarket === 'ALL' || activeMarket === 'INDIA'
-  const showUs = activeMarket === 'ALL' || activeMarket === 'USA'
+  const tvSymbol =
+    selectedAsset === 'SENSEX'
+      ? 'BSE:SENSEX'
+      : selectedAsset === 'BANKNIFTY'
+        ? 'NSE:BANKNIFTY'
+        : 'NSE:NIFTY'
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#D4AF37]/20 pb-4">
+      <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-xs text-amber-100/90">
+        <strong className="text-amber-300">Educational model:</strong> Spot / PCR / targets below are{' '}
+        <strong>sample scenario cards</strong>, not guaranteed predictions. Wire Angel LIVE LTP on Decision
+        Desk for real index prints. TradingView embed is third-party chart only.
+      </div>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl">
         <div>
-          <h2 className="text-xl font-bold font-['Cinzel'] text-[#FBF8F1] flex items-center gap-2">
-            <Globe className="w-5 h-5 text-[#D4AF37]" /> Global Macro & Cross-Border Desk
-          </h2>
-          <p className="text-xs text-[#9B978F]">
-            Monitor international commodities, semiconductor baskets, and Indian vs. US equivalents ·
-            sample educational cards (not live ticks)
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-400/10 text-amber-300 border border-amber-400/30">
+              F&amp;O SCENARIO SUITE
+            </span>
+            <span className="text-xs text-amber-200/80 font-mono font-semibold">MODEL READ · NOT LIVE AI</span>
+          </div>
+          <h2 className="text-2xl font-bold text-[#F1F5F9] font-serif">Intraday Trajectory Matrix</h2>
+          <p className="text-xs text-[#94A3B8]">
+            Scenario bands for learning · invalidation always shown · no guaranteed targets
           </p>
         </div>
-
-        <div className="flex items-center gap-2 bg-[#0E1424] p-1 border border-[#D4AF37]/20 rounded-lg text-xs font-mono">
-          {(['ALL', 'INDIA', 'USA'] as const).map((m) => (
+        <div className="flex items-center gap-2 bg-[#0B0F19] p-1.5 rounded-xl border border-amber-500/20">
+          {(['NIFTY', 'BANKNIFTY', 'SENSEX'] as const).map((asset) => (
             <button
-              key={m}
+              key={asset}
               type="button"
-              onClick={() => setActiveMarket(m)}
-              className={`px-3 py-1 rounded transition-all ${
-                activeMarket === m ? 'bg-[#D4AF37] text-black font-bold' : 'text-[#9B978F]'
+              onClick={() => setSelectedAsset(asset)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                selectedAsset === asset
+                  ? 'bg-amber-400 text-black shadow-md'
+                  : 'text-[#94A3B8] hover:text-[#F1F5F9]'
               }`}
             >
-              {m === 'ALL' ? 'All Macro' : m === 'INDIA' ? 'Indian Proxies' : 'US Benchmark'}
+              {asset}
             </button>
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {assets.map((asset, i) => (
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 font-mono">
+        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] uppercase block">Underlying Spot</span>
+          <span className="text-lg font-bold text-[#F1F5F9]">{assetMetrics[selectedAsset].spot}</span>
+          <span className="text-xs text-emerald-400 block">{assetMetrics[selectedAsset].change}</span>
+        </div>
+        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] uppercase block">VWAP (sample)</span>
+          <span className="text-lg font-bold text-amber-300">{assetMetrics[selectedAsset].vwap}</span>
+          <span className="text-xs text-[#94A3B8] block">Illustrative</span>
+        </div>
+        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] uppercase block">Put/Call Ratio</span>
+          <span className="text-lg font-bold text-emerald-400">{assetMetrics[selectedAsset].pcr}</span>
+          <span className="text-xs text-[#94A3B8] block">Sample</span>
+        </div>
+        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] uppercase block">Max Pain Level</span>
+          <span className="text-lg font-bold text-[#F1F5F9]">{assetMetrics[selectedAsset].maxPain}</span>
+          <span className="text-xs text-[#94A3B8] block">Sample</span>
+        </div>
+        <div className="bg-[#141A28] border border-amber-500/20 p-3.5 rounded-xl col-span-2 md:col-span-1">
+          <span className="text-[10px] text-[#94A3B8] uppercase block">Scenario Stance</span>
+          <span className="text-lg font-bold text-emerald-400 flex items-center gap-1">
+            LONG BIAS <ArrowUpRight className="w-4 h-4" />
+          </span>
+          <span className="text-xs text-[#94A3B8] block">Illustrative score</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {projections.map((proj, idx) => (
           <div
-            key={i}
-            className="border border-[#D4AF37]/20 bg-[#0A0E18] p-5 rounded-xl space-y-4 hover:border-[#D4AF37]/40 transition-all"
+            key={idx}
+            className="bg-[#141A28] border border-amber-500/30 p-5 rounded-2xl space-y-4 hover:border-amber-400 transition-all"
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 border border-[#D4AF37]/30 rounded text-[#D4AF37] bg-[#D4AF37]/5">
-                  {asset.category}
-                </span>
-                <h3 className="text-lg font-bold font-['Cinzel'] text-[#FBF8F1] mt-1.5">{asset.name}</h3>
-              </div>
-              <div className="text-right font-mono">
-                <span
-                  className={`text-sm font-bold flex items-center justify-end gap-1 ${
-                    asset.isPositive ? 'text-emerald-400' : 'text-rose-400'
-                  }`}
-                >
-                  {asset.isPositive ? (
-                    <TrendingUp className="w-3.5 h-3.5" />
-                  ) : (
-                    <TrendingDown className="w-3.5 h-3.5" />
-                  )}
-                  {asset.change}
-                </span>
-              </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-mono font-bold text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2.5 py-1 rounded-md">
+                {proj.timeframe}
+              </span>
+              <span className="text-xs font-mono font-semibold text-emerald-400">
+                {proj.confidence}% model weight
+              </span>
             </div>
-            <div className="grid grid-cols-2 gap-3 p-3 bg-[#0E1424] border border-[#D4AF37]/15 rounded-lg text-xs font-mono">
-              {showIndia && (
-                <div>
-                  <span className="text-[#9B978F] block text-[10px]">INDIAN PROXY</span>
-                  <span className="text-[#FBF8F1] font-bold block">{asset.inTicker}</span>
-                  <span className="text-[#D4AF37]">{asset.inPrice}</span>
-                </div>
-              )}
-              {showUs && (
-                <div className={showIndia ? 'border-l border-[#D4AF37]/15 pl-3' : ''}>
-                  <span className="text-[#9B978F] block text-[10px]">US / GLOBAL BENCHMARK</span>
-                  <span className="text-[#FBF8F1] font-bold block">{asset.usTicker}</span>
-                  <span className="text-[#D4AF37]">{asset.usPrice}</span>
-                </div>
-              )}
+            <div>
+              <span className="text-[11px] text-[#94A3B8] font-mono uppercase block">
+                Scenario target band
+              </span>
+              <p className="text-xl font-bold font-mono text-[#F1F5F9] mt-0.5">{proj.targetZone}</p>
             </div>
-            <div className="space-y-2 text-xs">
-              <p className="text-[#CAC5BA] leading-relaxed">
-                <strong className="text-[#D4AF37] font-serif">Global Thesis:</strong> {asset.thesis}
-              </p>
-              <p className="text-[#9B978F] leading-relaxed border-t border-[#D4AF37]/10 pt-2">
-                <strong className="text-emerald-400 font-serif">Court Read (India):</strong>{' '}
-                {asset.indianImpact}
-              </p>
+            <div className="text-xs text-[#CBD5E1] leading-relaxed border-t border-amber-500/10 pt-3">
+              <strong className="text-amber-200">Read: </strong>
+              {proj.driver}
+            </div>
+            <div className="bg-[#0B0F19] p-3 rounded-lg border border-rose-500/20 text-xs font-mono flex items-center justify-between text-rose-300">
+              <span>Invalidation:</span>
+              <span className="font-bold">{proj.invalidation}</span>
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="bg-[#141A28] border border-amber-500/20 p-4 rounded-2xl space-y-3">
+        <div className="flex justify-between items-center">
+          <h3 className="text-sm font-bold text-[#F1F5F9] font-serif flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-amber-300" /> TradingView chart (embed)
+          </h3>
+          <span className="text-xs font-mono text-[#94A3B8]">Third-party · not Novaforge data</span>
+        </div>
+        <div className="w-full h-[480px] rounded-xl overflow-hidden border border-[#1E293B]">
+          <iframe
+            title="TradingView Chart"
+            className="w-full h-full border-none"
+            src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(
+              tvSymbol,
+            )}&interval=5&theme=dark&style=1&timezone=Asia%2FKolkata`}
+          />
+        </div>
       </div>
     </div>
   )
 }
 
-export const StockSearchPage: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('')
-
-  const stockDatabase: StockMetric[] = [
+// --- STOCK & ETF UNIVERSAL SEARCH DESK ---
+export const UniversalSearchDesk: React.FC = () => {
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState<'ALL' | 'EQUITY' | 'COMMODITY_ETF' | 'THEMATIC'>('ALL')
+  const assets = [
     {
       ticker: 'RELIANCE',
-      name: 'Reliance Industries Ltd.',
-      exchange: 'NSE',
-      price: '2,984.50',
+      name: 'Reliance Industries',
+      type: 'EQUITY',
+      price: '₹2,984.50',
       change: '+1.15%',
-      isPositive: true,
+      signal: 'Bullish Momentum',
       pe: '28.4',
-      w52High: '3,024.00',
-      w52Low: '2,220.30',
-      volume: '6.2M',
-      verdict: 'Accumulation phase near upper boundary',
-      invalidation: '₹2,910',
+      w52h: '₹3,024',
+    },
+    {
+      ticker: 'SILVERBEES',
+      name: 'Nippon Silver ETF',
+      type: 'COMMODITY_ETF',
+      price: '₹88.50',
+      change: '+1.85%',
+      signal: 'Breakout Accumulation',
+      pe: 'N/A',
+      w52h: '₹94',
+    },
+    {
+      ticker: 'TATAELXSI',
+      name: 'Tata Elxsi (Semiconductor/Auto)',
+      type: 'THEMATIC',
+      price: '₹7,150.00',
+      change: '+2.40%',
+      signal: 'Reversal Formation',
+      pe: '54.2',
+      w52h: '₹9,200',
+    },
+    {
+      ticker: 'GOLDBEES',
+      name: 'Nippon Gold ETF',
+      type: 'COMMODITY_ETF',
+      price: '₹62.10',
+      change: '+0.40%',
+      signal: 'Hedging Safe Haven',
+      pe: 'N/A',
+      w52h: '₹66',
     },
     {
       ticker: 'HDFCBANK',
       name: 'HDFC Bank Ltd.',
-      exchange: 'NSE',
-      price: '1,452.10',
+      type: 'EQUITY',
+      price: '₹1,452.10',
       change: '-0.42%',
-      isPositive: false,
+      signal: 'Base Building',
       pe: '18.2',
-      w52High: '1,757.50',
-      w52Low: '1,363.55',
-      volume: '14.1M',
-      verdict: 'Rangebound base formation',
-      invalidation: '₹1,420',
-    },
-    {
-      ticker: 'TCS',
-      name: 'Tata Consultancy Services',
-      exchange: 'NSE',
-      price: '4,180.00',
-      change: '+0.88%',
-      isPositive: true,
-      pe: '31.1',
-      w52High: '4,592.00',
-      w52Low: '3,313.00',
-      volume: '2.1M',
-      verdict: 'Holding 50-day moving average',
-      invalidation: '₹4,080',
-    },
-    {
-      ticker: 'ICICIBANK',
-      name: 'ICICI Bank Ltd.',
-      exchange: 'NSE',
-      price: '1,120.30',
-      change: '+1.40%',
-      isPositive: true,
-      pe: '17.8',
-      w52High: '1,169.00',
-      w52Low: '912.00',
-      volume: '8.9M',
-      verdict: 'Bullish institutional participation',
-      invalidation: '₹1,095',
-    },
-    {
-      ticker: 'SILVERBEES',
-      name: 'Nippon India Silver ETF',
-      exchange: 'NSE',
-      price: '88.50',
-      change: '+1.85%',
-      isPositive: true,
-      pe: 'N/A',
-      w52High: '94.20',
-      w52Low: '67.00',
-      volume: '3.4M',
-      verdict: 'Breakout above consolidation channel',
-      invalidation: '₹85.20',
+      w52h: '₹1,757',
     },
     {
       ticker: 'DIXON',
-      name: 'Dixon Technologies Ltd.',
-      exchange: 'NSE',
-      price: '12,450.00',
+      name: 'Dixon Tech (Electronics/EMS)',
+      type: 'THEMATIC',
+      price: '₹12,450.00',
       change: '+3.10%',
-      isPositive: true,
+      signal: 'Institutional Expansion',
       pe: '104.2',
-      w52High: '13,200.00',
-      w52Low: '4,800.00',
-      volume: '820K',
-      verdict: 'Momentum continuation supported by EMS policy',
-      invalidation: '₹12,050',
+      w52h: '₹13,200',
     },
   ]
-
-  const [selectedStock, setSelectedStock] = useState<StockMetric>(stockDatabase[0])
-  const filtered = stockDatabase.filter(
-    (s) =>
-      s.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
+  const filtered = assets.filter((item) => {
+    const matchesQuery =
+      item.ticker.toLowerCase().includes(query.toLowerCase()) ||
+      item.name.toLowerCase().includes(query.toLowerCase())
+    const matchesCategory = category === 'ALL' || item.type === category
+    return matchesQuery && matchesCategory
+  })
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[#D4AF37]/20 pb-4">
+      <p className="text-xs text-amber-200/80 border border-amber-500/20 rounded-xl px-3 py-2 bg-amber-500/5">
+        Sample registry prices — not live quotes. Use Groww / IND Money for execution prices.
+      </p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-amber-500/20 pb-4">
         <div>
-          <h2 className="text-xl font-bold font-['Cinzel'] text-[#FBF8F1]">Sovereign Equity Registry</h2>
-          <p className="text-xs text-[#9B978F]">
-            NSE & BSE cash equity context · sample cache (not live quotes)
-          </p>
+          <h2 className="text-xl font-bold text-[#F1F5F9] font-serif">Universal Market Registry</h2>
+          <p className="text-xs text-[#94A3B8]">Equities, precious metal ETFs, and thematic names</p>
         </div>
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-[#D4AF37]" />
+          <Search className="w-4 h-4 absolute left-3 top-3 text-amber-300" />
           <input
             type="text"
-            placeholder="Search symbol (e.g. RELIANCE, SILVERBEES)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#0E1424] border border-[#D4AF37]/30 rounded-lg pl-9 pr-4 py-2 text-xs text-[#FBF8F1] focus:outline-none focus:border-[#D4AF37] font-mono"
+            placeholder="Search stock, silver, gold, chips..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full bg-[#141A28] border border-amber-500/30 rounded-xl pl-9 pr-4 py-2 text-xs text-[#F1F5F9] focus:outline-none focus:border-amber-400 font-mono"
           />
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="space-y-2">
-          {filtered.length > 0 ? (
-            filtered.map((item) => (
-              <div
-                key={item.ticker}
-                onClick={() => setSelectedStock(item)}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  selectedStock.ticker === item.ticker
-                    ? 'border-[#D4AF37] bg-[#D4AF37]/10'
-                    : 'border-[#D4AF37]/15 bg-[#0A0E18] hover:border-[#D4AF37]/40'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-mono font-bold text-sm text-[#FBF8F1]">{item.ticker}</span>
-                  <span className="font-mono text-sm text-[#FBF8F1]">₹{item.price}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-[#9B978F] truncate max-w-[150px]">{item.name}</span>
-                  <span className={item.isPositive ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>
-                    {item.change}
-                  </span>
-                </div>
+      <div className="flex gap-2 font-mono text-xs overflow-x-auto pb-2">
+        {(['ALL', 'EQUITY', 'COMMODITY_ETF', 'THEMATIC'] as const).map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setCategory(cat)}
+            className={`px-3 py-1.5 rounded-lg border transition-all ${
+              category === cat
+                ? 'bg-amber-400 border-amber-400 text-black font-bold'
+                : 'bg-[#141A28] border-amber-500/20 text-[#94A3B8] hover:text-[#F1F5F9]'
+            }`}
+          >
+            {cat.replace('_', ' ')}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
+        {filtered.map((item) => (
+          <div
+            key={item.ticker}
+            className="bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl space-y-4 hover:border-amber-400 transition-all"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="text-[10px] text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded font-bold">
+                  {item.type}
+                </span>
+                <h3 className="text-lg font-bold text-[#F1F5F9] font-sans mt-1">{item.name}</h3>
+                <span className="text-xs text-[#94A3B8]">{item.ticker}.NS</span>
               </div>
-            ))
-          ) : (
-            <div className="p-4 text-center text-xs text-[#9B978F] border border-dashed border-[#D4AF37]/20 rounded-xl">
-              Symbol not in local quick-cache.
+              <div className="text-right">
+                <span className="text-lg font-bold text-[#F1F5F9] block">{item.price}</span>
+                <span
+                  className={`text-xs font-bold ${
+                    item.change.startsWith('+') ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {item.change}
+                </span>
+              </div>
             </div>
-          )}
-        </div>
-        <div className="lg:col-span-2 border border-[#D4AF37]/30 bg-[#0A0E18] rounded-xl p-6 space-y-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-[10px] font-mono border border-[#D4AF37]/40 bg-[#D4AF37]/10 text-[#D4AF37] px-2 py-0.5 rounded">
-                {selectedStock.exchange} EQUITIES
-              </span>
-              <h3 className="text-2xl font-bold font-['Cinzel'] text-[#FBF8F1] mt-2">
-                {selectedStock.name}
-              </h3>
-              <span className="font-mono text-xs text-[#9B978F]">SYMBOL: {selectedStock.ticker}.NS</span>
+            <div className="grid grid-cols-2 gap-2 bg-[#0B0F19] p-3 rounded-lg border border-[#1E293B] text-xs">
+              <div>
+                <span className="text-[10px] text-[#94A3B8] block">52W High</span>
+                <span className="text-[#F1F5F9] font-bold">{item.w52h}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#94A3B8] block">Valuation P/E</span>
+                <span className="text-amber-300 font-bold">{item.pe}</span>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold font-mono text-[#FBF8F1]">₹{selectedStock.price}</p>
-              <p
-                className={`text-xs font-mono ${
-                  selectedStock.isPositive ? 'text-emerald-400' : 'text-rose-400'
-                }`}
-              >
-                {selectedStock.change}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-3 border border-[#D4AF37]/20 bg-[#0E1424] rounded-lg">
-              <span className="text-[10px] text-[#9B978F] uppercase">P/E Ratio</span>
-              <p className="text-sm font-mono font-bold text-[#D4AF37] mt-1">{selectedStock.pe}</p>
-            </div>
-            <div className="p-3 border border-[#D4AF37]/20 bg-[#0E1424] rounded-lg">
-              <span className="text-[10px] text-[#9B978F] uppercase">52W High</span>
-              <p className="text-sm font-mono font-bold text-[#FBF8F1] mt-1">₹{selectedStock.w52High}</p>
-            </div>
-            <div className="p-3 border border-[#D4AF37]/20 bg-[#0E1424] rounded-lg">
-              <span className="text-[10px] text-[#9B978F] uppercase">52W Low</span>
-              <p className="text-sm font-mono font-bold text-[#FBF8F1] mt-1">₹{selectedStock.w52Low}</p>
-            </div>
-            <div className="p-3 border border-[#D4AF37]/20 bg-[#0E1424] rounded-lg">
-              <span className="text-[10px] text-[#9B978F] uppercase">Volume</span>
-              <p className="text-sm font-mono font-bold text-[#FBF8F1] mt-1">{selectedStock.volume}</p>
-            </div>
-          </div>
-          <div className="border border-emerald-500/20 bg-emerald-500/5 p-4 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-emerald-400 font-['Cinzel'] font-bold text-xs">
-              <ShieldAlert className="w-4 h-4" />
-              <span>Court Decision Scenario & Invalidation</span>
-            </div>
-            <p className="text-xs text-[#CAC5BA] leading-relaxed">
-              <strong className="text-white">Read:</strong> {selectedStock.verdict}.
-            </p>
-            <p className="text-xs font-mono text-rose-300">
-              <strong>Invalidation Stop:</strong> {selectedStock.invalidation}
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/** Alias for old routes that imported StockDetailPage */
-export function StockDetailPage() {
-  return <StockSearchPage />
-}
-
-export const LiveNewsAndFlows: React.FC = () => {
-  const fiiDiiData = [
-    {
-      date: 'Recent Session (Cash)',
-      fiiNet: '-₹1,642 Cr',
-      diiNet: '+₹2,110 Cr',
-      netTotal: '+₹468 Cr',
-      sentiment: 'DII SUPPORT',
-    },
-    {
-      date: 'Month-to-Date Net',
-      fiiNet: '-₹11,480 Cr',
-      diiNet: '+₹18,240 Cr',
-      netTotal: '+₹6,760 Cr',
-      sentiment: 'DOMESTIC ABSORPTION',
-    },
-  ]
-  const causalNews = [
-    {
-      title: 'US Fed Signals Measured Rate Trajectory',
-      sector: 'IT & GROWTH',
-      type: 'MACRO',
-      impact: 'NEUTRAL TO CAUTIOUS',
-      body: 'Mid-cap IT multiples face valuation ceiling; currency benefits offset pressure on revenue guidance.',
-    },
-    {
-      title: 'Government Clears Enhanced Semiconductor Subsidy Tranche',
-      sector: 'EMS & ELECTRONICS',
-      type: 'POLICY',
-      impact: 'STRONG BULLISH',
-      body: 'Direct capital support for domestic fabrication and contract manufacturing players.',
-    },
-    {
-      title: 'Domestic Auto Dispatches Show Rural Recovery',
-      sector: 'AUTO & TRACTORS',
-      type: 'EARNINGS FACTOR',
-      impact: 'BULLISH',
-      body: 'Two-wheeler and tractor sales exhibit volume expansion following healthy monsoon trends.',
-    },
-  ]
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold font-['Cinzel'] text-[#FBF8F1] flex items-center gap-2">
-          <Landmark className="w-5 h-5 text-[#D4AF37]" /> Institutional Flows (FII / DII) & Decrees
-        </h2>
-        <p className="text-xs text-[#9B978F]">
-          Sample EOD-style institutional prints & causal news · replace with official NSE when
-          wiring live
-        </p>
-      </div>
-      <div className="border border-[#D4AF37]/20 bg-[#0A0E18] rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-[#D4AF37]/15 bg-[#0E1424]">
-          <span className="text-xs font-['Cinzel'] font-bold text-[#D4AF37]">
-            Official NSE EOD Institutional Participation (sample)
-          </span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="text-[#9B978F] border-b border-[#D4AF37]/10 bg-[#080B11]">
-              <tr>
-                <th className="p-3">TIMEFRAME</th>
-                <th className="p-3">FII / FPI NET</th>
-                <th className="p-3">DII NET</th>
-                <th className="p-3">NET TOTAL</th>
-                <th className="p-3">REGIME</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#D4AF37]/10 text-[#FBF8F1]">
-              {fiiDiiData.map((row, i) => (
-                <tr key={i} className="hover:bg-[#D4AF37]/5">
-                  <td className="p-3 font-sans font-medium">{row.date}</td>
-                  <td className="p-3 text-rose-400">{row.fiiNet}</td>
-                  <td className="p-3 text-emerald-400">{row.diiNet}</td>
-                  <td className="p-3 font-bold">{row.netTotal}</td>
-                  <td className="p-3 text-[#D4AF37]">{row.sentiment}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {causalNews.map((news, i) => (
-          <div key={i} className="border border-[#D4AF37]/20 bg-[#0A0E18] p-5 rounded-xl space-y-3">
-            <div className="flex justify-between items-center text-[10px] font-mono">
-              <span className="text-[#D4AF37] border border-[#D4AF37]/30 px-2 py-0.5 rounded">
-                {news.type}
-              </span>
-              <span className="text-emerald-400 font-bold">{news.impact}</span>
-            </div>
-            <h4 className="font-bold text-sm text-[#FBF8F1] leading-snug">{news.title}</h4>
-            <p className="text-xs text-[#CAC5BA] leading-relaxed">{news.body}</p>
-            <div className="pt-2 border-t border-[#D4AF37]/10 text-[11px] font-mono text-[#9B978F]">
-              SECTOR FOCUS: <span className="text-[#FBF8F1]">{news.sector}</span>
+            <div className="border-t border-amber-500/10 pt-3 flex items-center justify-between text-xs">
+              <span className="text-[#94A3B8]">Scenario read:</span>
+              <span className="text-emerald-400 font-bold">{item.signal}</span>
             </div>
           </div>
         ))}
@@ -485,69 +357,162 @@ export const LiveNewsAndFlows: React.FC = () => {
   )
 }
 
-/** Alias for /news route */
-export function NewsIntelPage() {
-  return <LiveNewsAndFlows />
-}
-
-/** Minimal IPO keep so App route does not break */
-export function IpoDeskPage() {
+// --- NEWS DESK ---
+export const RealtimeNewsDesk: React.FC = () => {
+  const newsStream = [
+    {
+      time: 'Sample',
+      headline: 'RBI Stays Focused on Rupee Stability as Foreign Inflows Solidify Base',
+      sector: 'MACRO / BANKING',
+      impact: 'BULLISH',
+      summary:
+        'Central bank liquidity absorption operations remain balanced, keeping overnight interbank rates anchored.',
+    },
+    {
+      time: 'Sample',
+      headline: 'Global Silver Bullion Moves on Industrial Green Tech Demand',
+      sector: 'COMMODITIES & METALS',
+      impact: 'BULLISH METALS',
+      summary:
+        'Educational card — verify live silver/ETF prices on exchange apps before acting.',
+    },
+    {
+      time: 'Sample',
+      headline: 'Crude Softens on Demand Forecasts',
+      sector: 'ENERGY & PAINTS',
+      impact: 'POSITIVE FOR INDIA',
+      summary:
+        'Lower crude can ease import bill pressure; company margins still stock-specific.',
+    },
+  ]
   return (
-    <div className="space-y-4 text-[#EAE6DF]">
-      <h2 className="text-xl font-bold font-['Cinzel'] text-[#FBF8F1]">IPO Desk</h2>
-      <p className="text-xs text-[#9B978F]">
-        GMP is unofficial. Verify on NSE / SEBI. Full calendar can be re-linked from earlier IPO
-        module.
-      </p>
-      <div className="border border-[#D4AF37]/20 bg-[#0A0E18] p-5 rounded-xl text-sm">
-        Use official exchange filings. Educational only.
+    <div className="space-y-6">
+      <div className="border-b border-amber-500/20 pb-4 flex justify-between items-center flex-wrap gap-2">
+        <div>
+          <h2 className="text-xl font-bold text-[#F1F5F9] font-serif">Causal Financial Wire</h2>
+          <p className="text-xs text-[#94A3B8]">Sample impact cards · not a live news API</p>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-mono text-amber-300">
+          SAMPLE FEED
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {newsStream.map((item, idx) => (
+          <div
+            key={idx}
+            className="bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-400 transition-all"
+          >
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-[10px] font-mono">
+                <span className="text-amber-300 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded font-bold">
+                  {item.sector}
+                </span>
+                <span className="text-[#94A3B8]">{item.time}</span>
+              </div>
+              <h3 className="text-base font-bold text-[#F1F5F9] leading-snug font-sans">
+                {item.headline}
+              </h3>
+              <p className="text-xs text-[#CBD5E1] leading-relaxed">{item.summary}</p>
+            </div>
+            <div className="pt-4 border-t border-amber-500/10 flex justify-between items-center text-xs font-mono mt-4">
+              <span className="text-[#94A3B8]">Bias tag:</span>
+              <span className="text-emerald-400 font-bold">{item.impact}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-export const ExtraPages: React.FC = () => {
-  const [tab, setTab] = useState<'stocks' | 'global' | 'news'>('global')
+/* Route aliases so App.tsx never breaks */
+export function StockSearchPage() {
+  return <UniversalSearchDesk />
+}
+export function StockDetailPage() {
+  return <UniversalSearchDesk />
+}
+export function NewsIntelPage() {
+  return <RealtimeNewsDesk />
+}
+export function GlobalMacroDesk() {
+  return <FoDecisionDesk />
+}
+export function IpoDeskPage() {
   return (
-    <div className="min-h-[70vh] text-[#EAE6DF] font-sans pb-8">
-      <div className="flex border-b border-[#D4AF37]/20 mb-6 space-x-6">
+    <div className="space-y-4 text-[#F1F5F9]">
+      <h2 className="text-xl font-bold font-serif flex items-center gap-2">
+        <Landmark className="w-5 h-5 text-amber-300" /> IPO Desk
+      </h2>
+      <p className="text-xs text-[#94A3B8]">
+        GMP is unofficial. Verify on NSE / SEBI. Educational only.
+      </p>
+      <div className="bg-[#141A28] border border-amber-500/20 p-5 rounded-2xl text-sm">
+        Use official exchange filings for applications and allotments.
+      </div>
+    </div>
+  )
+}
+
+// --- SOVEREIGN SHELL (tabs) ---
+export const ExtraPages: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'fo' | 'search' | 'news'>('fo')
+  return (
+    <div className="min-h-[70vh] text-[#F1F5F9] font-sans antialiased pb-8">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center">
+          <Zap className="w-5 h-5 text-black" />
+        </div>
+        <div>
+          <h1 className="text-lg font-bold tracking-wider font-serif">
+            NOVAFORGE{' '}
+            <span className="text-xs font-mono font-bold text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded ml-1 bg-amber-400/10">
+              SOVEREIGN DESK
+            </span>
+          </h1>
+          <p className="text-[11px] text-[#94A3B8]">Scenarios · registry · sample wire</p>
+        </div>
+      </div>
+      <div className="flex border-b border-amber-500/20 space-x-6 text-xs font-mono font-bold overflow-x-auto">
         <button
           type="button"
-          onClick={() => setTab('global')}
-          className={`pb-3 text-xs font-['Cinzel'] tracking-wider border-b-2 transition-all ${
-            tab === 'global'
-              ? 'border-[#D4AF37] text-[#D4AF37] font-bold'
-              : 'border-transparent text-[#9B978F] hover:text-[#EAE6DF]'
+          onClick={() => setActiveTab('fo')}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
+            activeTab === 'fo'
+              ? 'border-amber-400 text-amber-300'
+              : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
           }`}
         >
-          Global Macro & ETFs
+          <Activity className="w-4 h-4" /> F&amp;O Scenario Matrix
         </button>
         <button
           type="button"
-          onClick={() => setTab('stocks')}
-          className={`pb-3 text-xs font-['Cinzel'] tracking-wider border-b-2 transition-all ${
-            tab === 'stocks'
-              ? 'border-[#D4AF37] text-[#D4AF37] font-bold'
-              : 'border-transparent text-[#9B978F] hover:text-[#EAE6DF]'
+          onClick={() => setActiveTab('search')}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
+            activeTab === 'search'
+              ? 'border-amber-400 text-amber-300'
+              : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
           }`}
         >
-          Equity Search
+          <Search className="w-4 h-4" /> Stock &amp; ETF Registry
         </button>
         <button
           type="button"
-          onClick={() => setTab('news')}
-          className={`pb-3 text-xs font-['Cinzel'] tracking-wider border-b-2 transition-all ${
-            tab === 'news'
-              ? 'border-[#D4AF37] text-[#D4AF37] font-bold'
-              : 'border-transparent text-[#9B978F] hover:text-[#EAE6DF]'
+          onClick={() => setActiveTab('news')}
+          className={`pb-3 flex items-center gap-2 border-b-2 transition-all whitespace-nowrap ${
+            activeTab === 'news'
+              ? 'border-amber-400 text-amber-300'
+              : 'border-transparent text-[#94A3B8] hover:text-[#F1F5F9]'
           }`}
         >
-          FII / DII & News Decrees
+          <Newspaper className="w-4 h-4" /> Market Wire
         </button>
       </div>
-      {tab === 'global' && <GlobalMacroDesk />}
-      {tab === 'stocks' && <StockSearchPage />}
-      {tab === 'news' && <LiveNewsAndFlows />}
+      <div className="pt-6">
+        {activeTab === 'fo' && <FoDecisionDesk />}
+        {activeTab === 'search' && <UniversalSearchDesk />}
+        {activeTab === 'news' && <RealtimeNewsDesk />}
+      </div>
     </div>
   )
 }

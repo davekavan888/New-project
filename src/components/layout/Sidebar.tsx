@@ -9,21 +9,21 @@ import {
   Landmark,
   Search,
   Newspaper,
-  Globe,
+  Activity,
   LayoutGrid,
 } from 'lucide-react'
 
 const items = [
   { to: '/decision', label: 'Decision Desk', icon: Scale },
+  { to: '/fo', label: 'F&O Scenarios', icon: Activity },
   { to: '/live', label: 'Live Terminal', icon: Radio },
   { to: '/report-card', label: 'Report Card', icon: ClipboardCheck },
   { to: '/chain', label: 'Nifty Chain', icon: Layers },
-  { to: '/court', label: 'Court Desk', icon: LayoutGrid },
-  { to: '/macro', label: 'Global Macro', icon: Globe },
+  { to: '/court', label: 'Sovereign Desk', icon: LayoutGrid },
   { to: '/morning', label: 'Morning Brief', icon: Sunrise },
   { to: '/ipo', label: 'IPO Desk', icon: Landmark },
-  { to: '/search', label: 'Equity Search', icon: Search },
-  { to: '/news', label: 'FII / News', icon: Newspaper },
+  { to: '/search', label: 'Stock / ETF', icon: Search },
+  { to: '/news', label: 'Market Wire', icon: Newspaper },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -45,7 +45,7 @@ export function Sidebar() {
             Novaforge
           </div>
           <div style={{ fontSize: 10, color: '#c9a227', fontWeight: 700, letterSpacing: '0.06em' }}>
-            ROYAL DESK
+            SOVEREIGN DESK
           </div>
         </div>
       </div>
@@ -71,7 +71,7 @@ export function Sidebar() {
           fontFamily: 'Georgia, serif',
         }}
       >
-        Educational · sample cards marked · not advice
+        Educational · sample scenarios · not advice
       </div>
     </aside>
   )

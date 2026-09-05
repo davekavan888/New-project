@@ -15,6 +15,7 @@ import ExtraPages, {
   NewsIntelPage,
   IpoDeskPage,
   GlobalMacroDesk,
+  FoDecisionDesk,
 } from '@/pages/ExtraPages'
 
 export default function App() {
@@ -37,13 +38,14 @@ export default function App() {
         <Route path="/live" element={<LiveTerminalPage />} />
         <Route path="/report-card" element={<ReportCardPage />} />
         <Route path="/court" element={<ExtraPages />} />
+        <Route path="/fo" element={<FoDecisionDesk />} />
         <Route path="/macro" element={<GlobalMacroDesk />} />
         <Route path="/search" element={<StockSearchPage />} />
         <Route path="/stock/:symbol" element={<StockDetailPage />} />
         <Route path="/news" element={<NewsIntelPage />} />
         <Route path="/ipo" element={<IpoDeskPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/forecast30" element={<Navigate to="/decision" replace />} />
+        <Route path="/forecast30" element={<Navigate to="/fo" replace />} />
         <Route path="/numerology" element={<Navigate to="/decision" replace />} />
         <Route path="/scanners" element={<Navigate to="/decision" replace />} />
         <Route path="/options" element={<Navigate to="/chain" replace />} />
