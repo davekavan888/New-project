@@ -154,81 +154,140 @@ export const FoDecisionDesk: React.FC = () => {
   )
 }
 
-interface StockItem {
-  ticker: string; name: string; sector: string; price: string; change: string; isBull: boolean
-  category: 'HIGH_ORDER_BOOK' | '52W_HIGH' | '52W_LOW' | 'SPECULATIVE'
-  orderBook: string; pe: string; w52High: string; w52Low: string; thesis: string
-}
 
 export const UniversalStockScreener: React.FC = () => {
-  const [filter, setFilter] = useState<'ALL' | StockItem['category']>('ALL')
-  const [query, setQuery] = useState('')
-  const [selectedStock, setSelectedStock] = useState<StockItem | null>(null)
-  const stockArsenal: StockItem[] = [
-    { ticker: 'COCHINSHIP', name: 'Cochin Shipyard', sector: 'Defence', price: '₹1,940.50', change: '+4.85%', isBull: true, category: 'HIGH_ORDER_BOOK', orderBook: '₹22,000 Cr', pe: '44.2', w52High: '₹2,100', w52Low: '₹435', thesis: 'Sample card — verify filings.' },
-    { ticker: 'NHPC', name: 'NHPC Ltd.', sector: 'Power', price: '₹98.40', change: '+2.15%', isBull: true, category: 'HIGH_ORDER_BOOK', orderBook: '₹18,500 Cr', pe: '13.4', w52High: '₹118.40', w52Low: '₹48.20', thesis: 'Sample hydro narrative.' },
-    { ticker: 'MAZDOCK', name: 'Mazagon Dock', sector: 'Defence', price: '₹4,450.00', change: '+3.20%', isBull: true, category: 'HIGH_ORDER_BOOK', orderBook: '₹38,500 Cr', pe: '38.6', w52High: '₹5,860', w52Low: '₹1,740', thesis: 'Sample backlog card.' },
-    { ticker: 'DIXON', name: 'Dixon Technologies', sector: 'EMS', price: '₹12,450.00', change: '+3.10%', isBull: true, category: '52W_HIGH', orderBook: 'PLI', pe: '104.2', w52High: '₹13,200', w52Low: '₹4,800', thesis: 'High PE sample.' },
-    { ticker: 'HDFCBANK', name: 'HDFC Bank', sector: 'Banking', price: '₹1,452.10', change: '-0.42%', isBull: false, category: '52W_LOW', orderBook: 'N/A', pe: '18.2', w52High: '₹1,757', w52Low: '₹1,363', thesis: 'Sample value zone.' },
-    { ticker: 'SUZLON', name: 'Suzlon Energy', sector: 'Renewable', price: '₹74.50', change: '+5.00%', isBull: true, category: 'SPECULATIVE', orderBook: '~₹14,000 Cr', pe: '68.4', w52High: '₹86', w52Low: '₹22.50', thesis: 'High beta sample.' },
+  const [activeTicker, setActiveTicker] = useState<string>('RELIANCE')
+  const [searchInput, setSearchInput] = useState<string>('')
+  const coreUniverse = [
+    { ticker: 'RELIANCE', name: 'Reliance Industries', sector: 'Energy / Telecom' },
+    { ticker: 'HDFCBANK', name: 'HDFC Bank Ltd.', sector: 'Banking' },
+    { ticker: 'ICICIBANK', name: 'ICICI Bank Ltd.', sector: 'Banking' },
+    { ticker: 'INFY', name: 'Infosys Technologies', sector: 'IT Services' },
+    { ticker: 'TATASTEEL', name: 'Tata Steel Ltd.', sector: 'Metals' },
+    { ticker: 'ZOMATO', name: 'Zomato Ltd.', sector: 'Consumer Tech' },
+    { ticker: 'COCHINSHIP', name: 'Cochin Shipyard', sector: 'Defence / Ship' },
+    { ticker: 'DIXON', name: 'Dixon Technologies', sector: 'Electronics / EMS' },
   ]
-  const filtered = stockArsenal.filter((s) => {
-    const c = filter === 'ALL' || s.category === filter
-    const q = s.ticker.toLowerCase().includes(query.toLowerCase()) || s.name.toLowerCase().includes(query.toLowerCase())
-    return c && q
-  })
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const clean = searchInput.trim().toUpperCase().replace('.NS', '').replace('NSE:', '')
+    if (clean) {
+      setActiveTicker(clean)
+      setSearchInput('')
+    }
+  }
   return (
-    <div className="space-y-6">
-      <p className="text-xs text-amber-200/80 border border-[#D4AF37]/25 rounded-xl px-3 py-2 bg-[#D4AF37]/5">Sample registry · not live quotes</p>
-      <div className="flex flex-col md:flex-row justify-between gap-4 border-b border-[#D4AF37]/20 pb-4">
-        <h2 className="text-xl font-bold font-serif text-[#FDFBF7]">Sovereign Stock Radar</h2>
-        <div className="relative w-full md:w-80">
+    <div className="space-y-6 font-mono">
+      <p className="text-xs text-amber-200/80 border border-[#D4AF37]/25 rounded-xl px-3 py-2 bg-[#D4AF37]/5">
+        Chart = TradingView embed for any NSE symbol you type. Checklist numbers are educational samples, not live quant API.
+      </p>
+      <div className="bg-[#111F38] border border-[#D4AF37]/30 p-5 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-[10px] bg-[#D4AF37]/10 border border-[#D4AF37]/40 text-[#D4AF37] px-2 py-0.5 rounded font-bold">
+              NSE CHART RADAR
+            </span>
+            <span className="text-xs text-[#94A3B8]">Type any symbol · TV loads NSE:SYMBOL</span>
+          </div>
+          <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">Equity Deep-Analysis Terminal</h2>
+          <p className="text-xs text-[#94A3B8]">TradingView chart + sample checklist / invalidation framework</p>
+        </div>
+        <form onSubmit={handleSearchSubmit} className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3 top-3 text-[#D4AF37]" />
-          <input type="text" placeholder="Search..." value={query} onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-[#111F38] border border-[#D4AF37]/30 rounded-xl pl-9 pr-4 py-2 text-xs text-[#FDFBF7] font-mono" />
-        </div>
+          <input
+            type="text"
+            placeholder="Type any symbol (e.g. SBIN, IRFC, BEL)..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full bg-[#0A1224] border border-[#D4AF37]/40 rounded-xl pl-9 pr-20 py-2.5 text-xs text-[#FDFBF7] focus:outline-none focus:border-[#D4AF37]"
+          />
+          <button
+            type="submit"
+            className="absolute right-1.5 top-1.5 bg-[#D4AF37] text-[#070E1C] px-3 py-1 rounded-lg text-xs font-bold hover:brightness-110"
+          >
+            Load
+          </button>
+        </form>
       </div>
-      <div className="flex gap-2 font-mono text-xs overflow-x-auto pb-2">
-        {([['ALL', 'All'], ['HIGH_ORDER_BOOK', 'Order Book'], ['52W_HIGH', '52W High'], ['52W_LOW', '52W Low'], ['SPECULATIVE', 'Speculative']] as const).map(([id, label]) => (
-          <button key={id} type="button" onClick={() => setFilter(id as any)}
-            className={`px-3.5 py-2 rounded-xl border shrink-0 ${filter === id ? 'bg-[#D4AF37] text-[#070E1C] font-bold' : 'bg-[#111F38] border-[#D4AF37]/20 text-[#94A3B8]'}`}>{label}</button>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <span className="text-[#94A3B8] text-[11px] shrink-0">Quick:</span>
+        {coreUniverse.map((s) => (
+          <button
+            key={s.ticker}
+            type="button"
+            onClick={() => setActiveTicker(s.ticker)}
+            className={`px-3 py-1.5 rounded-lg border shrink-0 transition-all ${
+              activeTicker === s.ticker
+                ? 'bg-[#D4AF37] text-[#070E1C] border-[#D4AF37] font-bold'
+                : 'bg-[#111F38] border-[#D4AF37]/20 text-[#CBD5E1] hover:border-[#D4AF37]/50'
+            }`}
+          >
+            {s.ticker}
+          </button>
         ))}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-mono">
-        {filtered.map((stock) => (
-          <div key={stock.ticker} role="button" tabIndex={0} onClick={() => setSelectedStock(stock)}
-            className="bg-[#111F38] border border-[#D4AF37]/25 p-5 rounded-2xl space-y-3 hover:border-[#D4AF37] cursor-pointer">
-            <div className="flex justify-between">
-              <div>
-                <span className="text-[10px] text-[#D4AF37] border border-[#D4AF37]/30 px-2 py-0.5 rounded">{stock.sector}</span>
-                <h3 className="text-lg font-bold text-[#FDFBF7] font-sans mt-1">{stock.name}</h3>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-bold text-[#FDFBF7] block">{stock.price}</span>
-                <span className={stock.isBull ? 'text-emerald-400 text-xs' : 'text-rose-400 text-xs'}>{stock.change}</span>
-              </div>
-            </div>
-            <p className="text-xs text-[#CBD5E1] line-clamp-2">{stock.thesis}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-[#111F38] border border-[#D4AF37]/30 p-4 rounded-2xl space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-[#FDFBF7] flex items-center gap-2">
+              CHART: {activeTicker}
+            </span>
+            <span className="text-[11px] text-[#D4AF37]">NSE · TradingView</span>
           </div>
-        ))}
-      </div>
-      {selectedStock && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111F38] border-2 border-[#D4AF37] w-full max-w-2xl rounded-2xl p-6 relative space-y-4">
-            <button type="button" className="absolute top-4 right-4 text-[#94A3B8]" onClick={() => setSelectedStock(null)}><X className="w-5 h-5" /></button>
-            <h3 className="text-2xl font-serif font-bold text-[#FDFBF7] pr-8">{selectedStock.name}</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
-              {[['P/E', selectedStock.pe], ['52W High', selectedStock.w52High], ['52W Low', selectedStock.w52Low], ['Order book', selectedStock.orderBook]].map(([k, v]) => (
-                <div key={k} className="bg-[#0A1224] p-3 rounded-xl border border-[#D4AF37]/20">
-                  <span className="text-[#94A3B8] block">{k}</span>
-                  <span className="text-[#D4AF37] font-bold">{v}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-[#CBD5E1]">{selectedStock.thesis}</p>
+          <div className="w-full h-[520px] rounded-xl overflow-hidden border border-[#1E2E4E]">
+            <iframe
+              key={activeTicker}
+              title={`TV ${activeTicker}`}
+              className="w-full h-full border-none"
+              src={`https://s.tradingview.com/widgetembed/?symbol=NSE%3A${encodeURIComponent(
+                activeTicker,
+              )}&interval=D&theme=dark&style=1&timezone=Asia%2FKolkata`}
+            />
           </div>
         </div>
-      )}
+        <div className="space-y-4">
+          <div className="bg-[#111F38] border border-[#D4AF37]/30 p-5 rounded-2xl space-y-4">
+            <h3 className="text-sm font-bold text-[#FDFBF7] font-serif border-b border-[#D4AF37]/20 pb-3">
+              Sample checklist: {activeTicker}
+            </h3>
+            <div className="space-y-3 text-xs">
+              <div className="flex justify-between items-center bg-[#0A1224] p-2.5 rounded-lg border border-[#D4AF37]/15">
+                <span className="text-[#94A3B8]">Trend (sample)</span>
+                <span className="text-emerald-400 font-bold">Check on chart</span>
+              </div>
+              <div className="flex justify-between items-center bg-[#0A1224] p-2.5 rounded-lg border border-[#D4AF37]/15">
+                <span className="text-[#94A3B8]">RSI / Volume</span>
+                <span className="text-[#D4AF37] font-bold">Read on TV studies</span>
+              </div>
+              <div className="flex justify-between items-center bg-[#0A1224] p-2.5 rounded-lg border border-[#D4AF37]/15">
+                <span className="text-[#94A3B8]">Your thesis</span>
+                <span className="text-[#FDFBF7] font-bold">Write before entry</span>
+              </div>
+            </div>
+          </div>
+          <div className="bg-[#111F38] border border-[#D4AF37]/30 p-5 rounded-2xl space-y-3">
+            <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-emerald-400" /> Invalidation rules
+            </h4>
+            <div className="bg-[#0A1224] p-3 rounded-xl border border-emerald-500/20 text-xs space-y-1.5 font-sans">
+              <span className="text-emerald-400 font-mono font-bold block">FRAMEWORK</span>
+              <p className="text-[#CBD5E1] text-[11px] leading-relaxed">
+                Define invalidation (e.g. prior swing low) before entry. Sample UI only — not a signal.
+              </p>
+            </div>
+            <div className="bg-[#0A1224] p-3 rounded-xl border border-rose-500/30 text-xs space-y-1 font-mono">
+              <div className="flex justify-between text-rose-300">
+                <span>Hard stop idea:</span>
+                <span className="font-bold">Your level</span>
+              </div>
+              <div className="flex justify-between text-emerald-400">
+                <span>Min R:R idea:</span>
+                <span className="font-bold">1:2+</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
