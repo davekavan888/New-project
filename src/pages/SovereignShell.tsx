@@ -5,61 +5,33 @@ import {
   Newspaper,
   Globe,
   Landmark,
-  UserCheck,
   ShieldAlert,
   User,
   Lock,
   ArrowRight,
 } from 'lucide-react'
 import {
-  UniversalStockScreener,
   FoDecisionDesk,
+  UniversalStockScreener,
   InstitutionalFlowsDesk,
   VisualNewsWireDesk,
-  FinancialAdvisorConsensus,
   SectorEtfMatrix,
   RiskProtocolDesk,
 } from '@/pages/ExtraPages'
 
-type Tab = 'screener' | 'fo' | 'fii_dii' | 'news' | 'advisors' | 'etf' | 'risk'
+type Tab = 'fo' | 'screener' | 'fii_dii' | 'news' | 'etf' | 'risk'
 const GATE_KEY = 'novaforge_unlocked'
 
 export function SovereignShell() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    try {
-      return sessionStorage.getItem(GATE_KEY) === '1' || sessionStorage.getItem(GATE_KEY) === null
-    } catch {
-      return true
-    }
-  })
+  const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [currentTab, setCurrentTab] = useState<Tab>('fo')
 
-  const unlock = (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      sessionStorage.setItem(GATE_KEY, '1')
-    } catch {
-      /* ignore */
-    }
-    setIsAuthenticated(true)
-  }
-
-  const lock = () => {
-    try {
-      sessionStorage.setItem(GATE_KEY, '0')
-    } catch {
-      /* ignore */
-    }
-    setIsAuthenticated(false)
-    setPassword('')
-  }
-
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#060B17] via-[#0B1528] to-[#040813] text-[#F8FAFC] flex items-center justify-center p-4 font-sans">
-        <div className="w-full max-w-sm bg-[#101E36] border-2 border-[#D4AF37]/50 rounded-3xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-[#050914] via-[#091326] to-[#040812] text-[#F8FAFC] flex items-center justify-center p-4 font-sans antialiased">
+        <div className="w-full max-w-sm bg-[#0D182E] border-2 border-[#D4AF37]/50 rounded-3xl p-8 shadow-[0_20px_60px_rgba(0,0,0,0.85)] relative overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
           <div className="text-center space-y-3 mb-6">
             <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-[#D4AF37] to-[#F7E7A9] flex items-center justify-center text-xl text-[#070E1C] font-bold">
@@ -70,7 +42,13 @@ export function SovereignShell() {
               Sovereign Market Intelligence Desk
             </p>
           </div>
-          <form onSubmit={unlock} className="space-y-4 font-mono text-xs">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              setIsAuthenticated(true)
+            }}
+            className="space-y-4 font-mono text-xs"
+          >
             <div className="space-y-1">
               <label className="text-[#94A3B8] flex items-center gap-1.5 font-semibold">
                 <User className="w-3.5 h-3.5 text-[#D4AF37]" /> Trader Terminal ID
@@ -80,7 +58,7 @@ export function SovereignShell() {
                 placeholder="Enter Trader ID..."
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-[#080E1C] border border-[#D4AF37]/30 rounded-xl px-3.5 py-2.5 text-[#FDFBF7] focus:outline-none focus:border-[#D4AF37]"
+                className="w-full bg-[#070E1C] border border-[#D4AF37]/30 rounded-xl px-3.5 py-2.5 text-[#FDFBF7] focus:outline-none focus:border-[#D4AF37]"
               />
             </div>
             <div className="space-y-1">
@@ -92,12 +70,12 @@ export function SovereignShell() {
                 placeholder="Enter Passkey..."
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#080E1C] border border-[#D4AF37]/30 rounded-xl px-3.5 py-2.5 text-[#FDFBF7] focus:outline-none focus:border-[#D4AF37]"
+                className="w-full bg-[#070E1C] border border-[#D4AF37]/30 rounded-xl px-3.5 py-2.5 text-[#FDFBF7] focus:outline-none focus:border-[#D4AF37]"
               />
             </div>
             <button
               type="submit"
-              className="w-full mt-2 bg-gradient-to-r from-[#D4AF37] to-[#B38F26] text-[#070D1E] font-bold py-2.5 rounded-xl uppercase tracking-wider hover:brightness-110 flex items-center justify-center gap-2"
+              className="w-full mt-2 bg-gradient-to-r from-[#D4AF37] to-[#B38F26] text-[#070E1C] font-bold py-2.5 rounded-xl uppercase tracking-wider hover:brightness-110 flex items-center justify-center gap-2"
             >
               Unlock Gateway <ArrowRight className="w-4 h-4" />
             </button>
@@ -115,8 +93,7 @@ export function SovereignShell() {
     { id: 'fo', label: 'F&O Scalp & Trajectory', icon: Activity, badge: 'LTP' },
     { id: 'screener', label: 'All-Stock Screener', icon: Search },
     { id: 'fii_dii', label: 'FII / DII Flow Engine', icon: Landmark },
-    { id: 'news', label: 'Global & India News Wire', icon: Newspaper },
-    { id: 'advisors', label: 'Advisor Consensus', icon: UserCheck },
+    { id: 'news', label: 'Live Market Wire', icon: Newspaper },
     { id: 'etf', label: 'Sector & Thematic ETFs', icon: Globe },
     { id: 'risk', label: 'Capital & Risk Protocol', icon: ShieldAlert },
   ]
@@ -165,7 +142,7 @@ export function SovereignShell() {
         </div>
         <div className="p-4 border-t border-[#D4AF37]/20 bg-[#070E1C] text-[11px] font-mono text-[#64748B] flex items-center justify-between">
           <span className="text-[#94A3B8]">DESK OPEN</span>
-          <button type="button" onClick={lock} className="text-[#D4AF37] hover:underline">
+          <button type="button" onClick={() => setIsAuthenticated(false)} className="text-[#D4AF37] hover:underline">
             Lock
           </button>
         </div>
@@ -177,12 +154,11 @@ export function SovereignShell() {
             <span className="text-[#D4AF37] font-bold shrink-0">NOVAFORGE</span>
             <span className="text-[#64748B]">/</span>
             <span className="text-[#F8FAFC] font-semibold truncate">
-              {currentTab === 'fo' && 'Nifty & Bank Nifty · Angel LTP + chart'}
-              {currentTab === 'screener' && 'Stock chart desk (NSE via TradingView)'}
-              {currentTab === 'fii_dii' && 'FII / DII · official NSE EOD'}
-              {currentTab === 'news' && 'Market timeline'}
-              {currentTab === 'advisors' && 'Research notes'}
-              {currentTab === 'etf' && 'ETF charts'}
+              {currentTab === 'fo' && 'Nifty · BankNifty · Sensex desk'}
+              {currentTab === 'screener' && 'Stock chart radar'}
+              {currentTab === 'fii_dii' && 'FII / DII · official NSE'}
+              {currentTab === 'news' && 'Market wire'}
+              {currentTab === 'etf' && 'ETF baskets'}
               {currentTab === 'risk' && 'Risk protocol'}
             </span>
           </div>
@@ -196,7 +172,6 @@ export function SovereignShell() {
             {currentTab === 'screener' && <UniversalStockScreener />}
             {currentTab === 'fii_dii' && <InstitutionalFlowsDesk />}
             {currentTab === 'news' && <VisualNewsWireDesk />}
-            {currentTab === 'advisors' && <FinancialAdvisorConsensus />}
             {currentTab === 'etf' && <SectorEtfMatrix />}
             {currentTab === 'risk' && <RiskProtocolDesk />}
           </div>
