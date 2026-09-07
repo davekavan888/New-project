@@ -1,5 +1,7 @@
 /**
- * Live/delayed data via /api/market (Twelve Data + Yahoo fallback on server)
+ * Free-first live/delayed data layer.
+ * Tries public endpoints; falls back to structured demo so the app never breaks.
+ * Add VITE_TWELVEDATA_KEY later on Vercel for better coverage.
  */
 
 import type { Bar } from './indicators'
@@ -19,9 +21,6 @@ export type FIIDIIRow = {
   dii: number
 }
 
-const cache = new Map<string, { bars: Bar[]; source: IndexQuote['source']; at: number }>()
-const CACHE_MS = 3 * 60 * 1000 // 3 minutes — OK for your use
-
 function demoBars(base: number, n = 80): Bar[] {
   const bars: Bar[] = []
   let p = base
@@ -32,60 +31,57 @@ function demoBars(base: number, n = 80): Bar[] {
     const c = p * (1 + (Math.random() - 0.48) * 0.012)
     const h = Math.max(o, c) * (1 + Math.random() * 0.004)
     const l = Math.min(o, c) * (1 - Math.random() * 0.004)
-    bars.push({ t: start + i * day, o, h, l, c, v: 1e6 })
+    bars.push({ t: start + i * day, o, h, l, c, v: 1e6 + Math.random() * 1e6 })
     p = c
   }
   return bars
 }
 
-function parseBars(json: unknown): Bar[] | null {
-  const j = json as { status?: string; values?: { datetime: string; open: string; high: string; low: string; close: string; volume?: string }[] }
-  if (!j?.values || j.status === 'error') return null
-  const values = [...j.values].reverse()
-  const bars: Bar[] = values.map((v) => ({
-    t: new Date(v.datetime).getTime(),
-    o: Number(v.open),
-    h: Number(v.high),
-    l: Number(v.low),
-    c: Number(v.close),
-    v: v.volume ? Number(v.volume) : undefined,
-  }))
-  return bars.length > 5 ? bars : null
-}
-
-async function fetchBars(symbol: string, demoBase: number): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
-  const hit = cache.get(symbol)
-  if (hit && Date.now() - hit.at < CACHE_MS) return { bars: hit.bars, source: hit.source }
-
+/** Yahoo chart (unofficial, may fail — we catch) */
+async function yahooChart(symbol: string): Promise<Bar[] | null> {
   try {
-    const res = await fetch(`/api/market?symbol=${encodeURIComponent(symbol)}&interval=1day&outputsize=90`)
-    if (res.ok) {
-      const json = await res.json()
-      const bars = parseBars(json)
-      if (bars) {
-        const source: IndexQuote['source'] = 'delayed'
-        cache.set(symbol, { bars, source, at: Date.now() })
-        return { bars, source }
-      }
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=6mo`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const json = await res.json()
+    const r = json?.chart?.result?.[0]
+    if (!r) return null
+    const ts: number[] = r.timestamp || []
+    const q = r.indicators?.quote?.[0]
+    if (!q) return null
+    const bars: Bar[] = []
+    for (let i = 0; i < ts.length; i++) {
+      if (q.close[i] == null) continue
+      bars.push({
+        t: ts[i] * 1000,
+        o: q.open[i] ?? q.close[i],
+        h: q.high[i] ?? q.close[i],
+        l: q.low[i] ?? q.close[i],
+        c: q.close[i],
+        v: q.volume?.[i],
+      })
     }
+    return bars.length > 10 ? bars : null
   } catch {
-    /* demo */
+    return null
   }
-  const bars = demoBars(demoBase)
-  return { bars, source: 'demo' }
 }
 
 export async function fetchIndexBars(kind: 'nifty' | 'sensex'): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
-  if (kind === 'nifty') return fetchBars('NSEI', 24500)
-  return fetchBars('BSESN', 80000)
+  const yahooSym = kind === 'nifty' ? '^NSEI' : '^BSESN'
+  const bars = await yahooChart(yahooSym)
+  if (bars) return { bars, source: 'delayed' }
+  return { bars: demoBars(kind === 'nifty' ? 24500 : 80000), source: 'demo' }
 }
 
 export async function fetchStockBars(symbol: string): Promise<{ bars: Bar[]; source: IndexQuote['source'] }> {
+  // NSE Yahoo suffix
+  const bars = await yahooChart(`${symbol}.NS`)
+  if (bars) return { bars, source: 'delayed' }
   const bases: Record<string, number> = {
-    RELIANCE: 2850, TCS: 4100, HDFCBANK: 1680, INFY: 1850, ICICIBANK: 1240, SBIN: 820, BANKNIFTY: 52000,
+    RELIANCE: 2850, TCS: 4100, HDFCBANK: 1680, INFY: 1850, ICICIBANK: 1240, SBIN: 820,
   }
-  // Prefer Yahoo-style via our API map: RELIANCE → RELIANCE.NS on server
-  return fetchBars(symbol, bases[symbol] || 1000)
+  return { bars: demoBars(bases[symbol] || 1000), source: 'demo' }
 }
 
 export function quoteFromBars(
@@ -103,10 +99,11 @@ export function quoteFromBars(
     price: Number(last.c.toFixed(2)),
     changePercent: Number(changePercent.toFixed(2)),
     asOf: new Date(last.t).toISOString(),
-    source: source === 'demo' ? 'demo' : 'delayed',
+    source,
   }
 }
 
+/** FII/DII — try public JSON; fallback demo */
 export async function fetchFIIDII(): Promise<{ rows: FIIDIIRow[]; source: string }> {
   try {
     const res = await fetch('https://fii-diidata.mrchartist.com/api/history', {
@@ -125,7 +122,7 @@ export async function fetchFIIDII(): Promise<{ rows: FIIDIIRow[]; source: string
       if (rows.length) return { rows, source: 'public-feed' }
     }
   } catch {
-    /* demo */
+    /* fallback */
   }
   return {
     source: 'demo',
@@ -135,6 +132,8 @@ export async function fetchFIIDII(): Promise<{ rows: FIIDIIRow[]; source: string
       { date: 'Wed', fii: 400, dii: 200 },
       { date: 'Thu', fii: 1500, dii: -300 },
       { date: 'Fri', fii: -200, dii: 900 },
+      { date: 'Mon', fii: 700, dii: 100 },
+      { date: 'Tue', fii: -1100, dii: 800 },
     ],
   }
 }

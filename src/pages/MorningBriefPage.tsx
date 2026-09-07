@@ -19,7 +19,6 @@ import {
 } from '@/services/indicators'
 import { formatPercent, cn } from '@/lib/utils'
 import { Sunrise, RefreshCw, AlertTriangle, Shield } from 'lucide-react'
-import { DataHealthBadge, healthFromSource } from '@/components/DataHealthBadge'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 type StockPack = {
@@ -108,11 +107,8 @@ export function MorningBriefPage() {
             <Sunrise className="h-6 w-6 text-amber-400" />
             Morning Brief
           </h1>
-          <p className="text-sm text-zinc-400 flex flex-wrap items-center gap-2">
-            9:15–11 focus · personal use
-            {nifty && (
-              <DataHealthBadge status={healthFromSource(nifty.source)} asOf={nifty.asOf} />
-            )}
+          <p className="text-sm text-zinc-400">
+            9:15–11 focus · Nifty/Sensex · FII/DII · 3 chart models · educational only
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
@@ -126,7 +122,7 @@ export function MorningBriefPage() {
           <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
           <div>
             <strong className="text-amber-200">Personal educational tool — not investment advice.</strong>
-            {' '}No guaranteed profit. Data may be delayed or demo if feeds fail. You place trades on your broker.
+            {' '}No guaranteed profit. Data may be delayed or demo if feeds fail. You place trades on Groww / IND Money.
           </div>
         </div>
       </Card>
@@ -148,10 +144,15 @@ export function MorningBriefPage() {
         )}
         <Card>
           <div className="text-xs text-zinc-500 flex items-center gap-1">
-            <Shield className="h-3 w-3" /> 
+            <Shield className="h-3 w-3" /> Max loss per idea (₹)
           </div>
-          
-          <p className="mt-1 text-[10px] text-zinc-500"></p>
+          <input
+            type="number"
+            value={maxLoss}
+            onChange={(e) => setMaxLoss(Number(e.target.value) || 0)}
+            className="mt-2 h-10 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 text-lg font-bold outline-none focus:border-indigo-500"
+          />
+          <p className="mt-1 text-[10px] text-zinc-500">Used only to size educational qty ideas</p>
         </Card>
         <Card>
           <div className="text-xs text-zinc-500">Model mix (Nifty)</div>
@@ -197,24 +198,13 @@ export function MorningBriefPage() {
 
       {/* FII DII */}
       <Card>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-[#2c241c]">FII / DII</span>
-          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-[#7eb8d4]/50 bg-[#eef6fa] text-[#2c241c]">
-            source: {fiiSource || '—'}
-          </span>
-          {fiiSource === 'demo' && (
-            <span className="text-[11px] text-[#7a3a2e]">Illustrative sample — not NSE official live</span>
-          )}
-          {fiiSource === 'public-feed' && (
-            <span className="text-[11px] text-[#2f5c28]">Public/EOD-style feed — not intraday live · verify NSE/NSDL</span>
-          )}
-        </div>
+        <div className="mb-3 font-semibold">FII / DII · source: {fiiSource}</div>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={fii}>
-              <XAxis dataKey="date" tick={{ fill: '#7a6a5c', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#7a6a5c', fontSize: 10 }} />
-              <Tooltip contentStyle={{ background: '#fffdf9', border: '1px solid rgba(107,79,58,0.2)', borderRadius: 8, color: '#2c241c' }} />
+              <XAxis dataKey="date" tick={{ fill: '#71717a', fontSize: 10 }} />
+              <YAxis tick={{ fill: '#71717a', fontSize: 10 }} />
+              <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8 }} />
               <Legend />
               <Bar dataKey="fii" name="FII net" fill="#6366f1" />
               <Bar dataKey="dii" name="DII net" fill="#10b981" />
@@ -245,14 +235,9 @@ export function MorningBriefPage() {
                 </div>
                 <div
                   className={cn(
-                    'text-sm font-semibold capitalize px-3 py-1 rounded-full border shadow-sm',
-                    s.combined.bias === 'bullish' &&
-                      'bg-[#e8f6e4] text-[#2f5c28] border-[#7cbc6e]/50',
-                    s.combined.bias === 'bearish' &&
-                      'bg-[#fdecea] text-[#7a3a2e] border-[#e0a090]/60',
-                    s.combined.bias !== 'bullish' &&
-                      s.combined.bias !== 'bearish' &&
-                      'bg-[#eef6fa] text-[#2c241c] border-[#7eb8d4]/50',
+                    'text-sm font-medium capitalize px-2 py-1 rounded-lg bg-zinc-800',
+                    s.combined.bias === 'bullish' && 'text-emerald-400',
+                    s.combined.bias === 'bearish' && 'text-red-400',
                   )}
                 >
                   {s.combined.bias}
@@ -268,7 +253,7 @@ export function MorningBriefPage() {
                   <div className="font-medium tabular-nums">₹{s.risk.targetIdea}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-zinc-500">Qty idea (edu)</div>
+                  <div className="text-xs text-zinc-500">Qty idea @ max loss ₹{maxLoss}</div>
                   <div className="font-medium tabular-nums">{s.risk.qtyIdea}</div>
                 </div>
               </div>

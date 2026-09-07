@@ -20,7 +20,6 @@ import {
 } from '@/pages/ExtraPages'
 
 type Tab = 'fo' | 'screener' | 'fii_dii' | 'news' | 'etf' | 'risk'
-const GATE_KEY = 'novaforge_unlocked'
 
 export function SovereignShell() {
   const [isAuthenticated, setIsAuthenticated] = useState(true)
@@ -80,10 +79,6 @@ export function SovereignShell() {
               Unlock Gateway <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-          <div className="mt-5 pt-3 border-t border-[#D4AF37]/15 flex justify-between text-[10px] font-mono text-[#64748B]">
-            <span>PERSONAL DESK</span>
-            <span className="text-emerald-400">● SESSION GATE</span>
-          </div>
         </div>
       </div>
     )
@@ -147,22 +142,21 @@ export function SovereignShell() {
           </button>
         </div>
       </aside>
-
       <div className="flex-1 flex flex-col min-w-0 bg-[#070E1C]">
         <header className="h-16 border-b border-[#D4AF37]/20 bg-[#0D182E] px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 text-xs font-mono min-w-0">
             <span className="text-[#D4AF37] font-bold shrink-0">NOVAFORGE</span>
             <span className="text-[#64748B]">/</span>
             <span className="text-[#F8FAFC] font-semibold truncate">
-              {currentTab === 'fo' && 'Nifty · BankNifty · Sensex desk'}
-              {currentTab === 'screener' && 'Stock chart radar'}
-              {currentTab === 'fii_dii' && 'FII / DII · official NSE'}
+              {currentTab === 'fo' && 'ORB · LTP · journal'}
+              {currentTab === 'screener' && 'Stock charts'}
+              {currentTab === 'fii_dii' && 'FII / DII · NSE official'}
               {currentTab === 'news' && 'Market wire'}
-              {currentTab === 'etf' && 'ETF baskets'}
+              {currentTab === 'etf' && 'ETF charts'}
               {currentTab === 'risk' && 'Risk protocol'}
             </span>
           </div>
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] text-xs font-mono font-semibold">
+          <div className="hidden sm:flex px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] text-xs font-mono font-semibold">
             SOVEREIGN DESK
           </div>
         </header>
