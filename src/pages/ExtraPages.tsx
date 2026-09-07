@@ -6,11 +6,25 @@ import {
   Activity,
   Zap,
   RefreshCw,
+  PlusCircle,
+  X,
+  Clock,
 } from 'lucide-react'
 
 const BRIDGE_URL = String(
   (import.meta as any).env?.VITE_ANGEL_BRIDGE_URL || '',
 ).replace(/\/$/, '')
+
+interface TradeLog {
+  id: string
+  time: string
+  asset: string
+  direction: 'LONG' | 'SHORT'
+  entryPrice: string
+  stopLoss: string
+  target: string
+  status: 'ACTIVE' | 'HIT' | 'STOPPED'
+}
 
 function parseLtp(data: any, underlying: string): number | null {
   if (!data) return null
@@ -36,10 +50,30 @@ export const FoDecisionDesk: React.FC = () => {
   const [tickTimestamp, setTickTimestamp] = useState('--:--:--')
   const [err, setErr] = useState('')
 
+  // Manual ORB levels (true 9:15–9:30 high/low must be marked by you after open)
+  const [orbHigh, setOrbHigh] = useState('')
+  const [orbLow, setOrbLow] = useState('')
+
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false)
+  const [journalLogs, setJournalLogs] = useState<TradeLog[]>(() => {
+    try {
+      const saved = localStorage.getItem('novaforge_journal')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+  const [logForm, setLogForm] = useState({
+    direction: 'LONG' as 'LONG' | 'SHORT',
+    entryPrice: '',
+    stopLoss: '',
+    target: '',
+  })
+
   const fetchBridgeTicks = useCallback(async () => {
     if (!BRIDGE_URL) {
       setIsBridgeLive(false)
-      setErr('Set VITE_ANGEL_BRIDGE_URL')
+      setErr('Set VITE_ANGEL_BRIDGE_URL on Vercel')
       return
     }
     try {
@@ -58,7 +92,11 @@ export const FoDecisionDesk: React.FC = () => {
         setTickTimestamp(
           new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' }),
         )
-        setErr(underlying === 'SENSEX' ? 'SENSEX uses NIFTY LTP proxy — chart is BSE:SENSEX' : '')
+        setErr(
+          underlying === 'SENSEX'
+            ? 'SENSEX LTP proxied from NIFTY feed; chart is BSE:SENSEX'
+            : '',
+        )
       } else {
         setIsBridgeLive(false)
         setErr(data.quoteError || data.error || 'No LTP')
@@ -75,44 +113,59 @@ export const FoDecisionDesk: React.FC = () => {
     return () => clearInterval(id)
   }, [fetchBridgeTicks])
 
-  const spot = liveLtp ?? 0
-  const off =
-    underlying === 'SENSEX' ? 65 : underlying === 'BANKNIFTY' ? 52 : 14.5
-  const vwapAnchor = spot > 0 ? spot - off : 0
+  const spot = liveLtp
+  const oh = parseFloat(orbHigh)
+  const ol = parseFloat(orbLow)
+  const hasOrb = !Number.isNaN(oh) && !Number.isNaN(ol) && oh > ol
 
-  const timeProjections =
-    spot > 0
-      ? [
-          {
-            horizon: 'Next 5 Minutes',
-            targetBand: `${(spot + 15).toFixed(1)} – ${(spot + 28).toFixed(1)}`,
-            bias: 'SCENARIO',
-            note: 'Example band above spot — not a trade signal',
-            invalidation: (spot - 22).toFixed(1),
-          },
-          {
-            horizon: 'Next 10 Minutes',
-            targetBand: `${(spot + 25).toFixed(1)} – ${(spot + 45).toFixed(1)}`,
-            bias: 'SCENARIO',
-            note: 'Wider structure only',
-            invalidation: (spot - 35).toFixed(1),
-          },
-          {
-            horizon: 'Next 30 Minutes',
-            targetBand: `${(spot + 40).toFixed(1)} – ${(spot + 70).toFixed(1)}`,
-            bias: 'SCENARIO',
-            note: 'Planning range — confirm on chart',
-            invalidation: (spot - 55).toFixed(1),
-          },
-          {
-            horizon: 'Session envelope',
-            targetBand: `${(spot - 30).toFixed(1)} – ${(spot + 110).toFixed(1)}`,
-            bias: 'RANGE',
-            note: 'Rough session idea for stops',
-            invalidation: (spot - 90).toFixed(1),
-          },
-        ]
-      : []
+  const orbStatus =
+    spot != null && hasOrb
+      ? spot > oh
+        ? {
+            text: 'ABOVE YOUR ORB HIGH',
+            color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+          }
+        : spot < ol
+          ? {
+              text: 'BELOW YOUR ORB LOW',
+              color: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+            }
+          : {
+              text: 'INSIDE YOUR ORB RANGE',
+              color: 'text-amber-300 bg-amber-400/10 border-amber-400/30',
+            }
+      : {
+          text: 'SET ORB HIGH / LOW',
+          color: 'text-[#94A3B8] bg-[#070E1C] border-[#D4AF37]/20',
+        }
+
+  const handleSaveTrade = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!logForm.entryPrice || !logForm.stopLoss) return
+    const newLog: TradeLog = {
+      id: Date.now().toString(),
+      time: new Date().toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Kolkata',
+      }),
+      asset: underlying,
+      direction: logForm.direction,
+      entryPrice: logForm.entryPrice,
+      stopLoss: logForm.stopLoss,
+      target: logForm.target || 'Open',
+      status: 'ACTIVE',
+    }
+    const updated = [newLog, ...journalLogs]
+    setJournalLogs(updated)
+    try {
+      localStorage.setItem('novaforge_journal', JSON.stringify(updated))
+    } catch {
+      /* ignore */
+    }
+    setIsLogModalOpen(false)
+    setLogForm({ direction: 'LONG', entryPrice: '', stopLoss: '', target: '' })
+  }
 
   const tvSymbol =
     underlying === 'SENSEX' ? 'BSE:SENSEX' : `NSE:${underlying}`
@@ -132,16 +185,16 @@ export const FoDecisionDesk: React.FC = () => {
                 ? `ANGEL LTP LIVE (${tickTimestamp} IST)`
                 : 'BRIDGE WAITING'}
             </span>
-            {err ? <span className="text-[10px] text-amber-200/80">{err}</span> : null}
+            {err ? <span className="text-[10px] text-amber-200/90">{err}</span> : null}
           </div>
           <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">
-            Intraday Index Desk
+            Intraday · ORB + Journal
           </h2>
           <p className="text-xs text-[#94A3B8]">
-            Real LTP from Angel · chart TradingView · table = scenario bands only
+            Live LTP from Angel · mark 9:15–9:30 high/low yourself · log setups
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex gap-1.5 bg-[#070E1C] p-1.5 rounded-xl border border-[#D4AF37]/30">
             {(['NIFTY', 'BANKNIFTY', 'SENSEX'] as const).map((sym) => (
               <button
@@ -165,15 +218,22 @@ export const FoDecisionDesk: React.FC = () => {
           >
             <RefreshCw className="w-4 h-4" />
           </button>
+          <button
+            type="button"
+            onClick={() => setIsLogModalOpen(true)}
+            className="px-3.5 py-2 bg-[#D4AF37] text-[#070D1E] rounded-xl text-xs font-bold flex items-center gap-1.5"
+          >
+            <PlusCircle className="w-3.5 h-3.5" /> Log Setup
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
           <span className="text-[10px] text-[#94A3B8] uppercase block">Live Spot LTP</span>
           <span className="text-2xl font-bold text-[#FDFBF7]">
-            {liveLtp != null
-              ? liveLtp.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+            {spot != null
+              ? spot.toLocaleString('en-IN', { maximumFractionDigits: 2 })
               : '—'}
           </span>
           <span
@@ -185,19 +245,30 @@ export const FoDecisionDesk: React.FC = () => {
           </span>
         </div>
         <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Offset ref</span>
-          <span className="text-2xl font-bold text-[#D4AF37]">
-            {vwapAnchor > 0 ? vwapAnchor.toFixed(2) : '—'}
+          <span className="text-[10px] text-[#94A3B8] uppercase block">Your ORB High</span>
+          <input
+            className="w-full mt-1 bg-[#070E1C] border border-emerald-500/30 rounded-lg px-2 py-1.5 text-emerald-400 font-bold text-sm"
+            placeholder="After 9:30"
+            value={orbHigh}
+            onChange={(e) => setOrbHigh(e.target.value)}
+          />
+        </div>
+        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] uppercase block">Your ORB Low</span>
+          <input
+            className="w-full mt-1 bg-[#070E1C] border border-rose-500/30 rounded-lg px-2 py-1.5 text-rose-400 font-bold text-sm"
+            placeholder="After 9:30"
+            value={orbLow}
+            onChange={(e) => setOrbLow(e.target.value)}
+          />
+        </div>
+        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
+          <span className="text-[10px] text-[#94A3B8] uppercase block">ORB vs LTP</span>
+          <span
+            className={`text-xs px-2 py-1 rounded font-bold border block mt-1.5 text-center ${orbStatus.color}`}
+          >
+            {orbStatus.text}
           </span>
-          <span className="text-xs text-[#94A3B8]">not exchange VWAP</span>
-        </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Source</span>
-          <span className="text-sm font-bold text-[#D4AF37]">Angel SmartAPI</span>
-        </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Rule</span>
-          <span className="text-xs text-[#CBD5E1]">Confirm on broker before order</span>
         </div>
       </div>
 
@@ -206,7 +277,7 @@ export const FoDecisionDesk: React.FC = () => {
           <span className="font-bold text-[#FDFBF7] flex items-center gap-2">
             <BarChart2 className="w-4 h-4 text-[#D4AF37]" /> {tvSymbol}
           </span>
-          <span className="text-[#94A3B8]">5m</span>
+          <span className="text-[#94A3B8]">5m · mark ORB on chart</span>
         </div>
         <div className="w-full h-[520px] rounded-xl overflow-hidden border border-[#1E2E4E] bg-black">
           <iframe
@@ -220,45 +291,116 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-2xl overflow-hidden">
-        <div className="p-4 bg-[#12203D] border-b border-[#D4AF37]/20 text-xs font-bold text-[#D4AF37] uppercase">
-          Scenario bands from LTP (not predictions / not 78% signals)
+      {journalLogs.length > 0 && (
+        <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-2xl p-5 space-y-3">
+          <div className="flex justify-between border-b border-[#D4AF37]/20 pb-3">
+            <span className="text-xs font-bold text-[#D4AF37] uppercase flex items-center gap-2">
+              <Clock className="w-4 h-4" /> Logged setups (this browser)
+            </span>
+            <span className="text-[10px] text-[#94A3B8]">{journalLogs.length}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {journalLogs.slice(0, 6).map((log) => (
+              <div
+                key={log.id}
+                className="bg-[#070E1C] border border-[#D4AF37]/20 p-3.5 rounded-xl text-xs space-y-1.5"
+              >
+                <div className="flex justify-between">
+                  <span className="font-bold text-[#FDFBF7]">{log.asset}</span>
+                  <span
+                    className={
+                      log.direction === 'LONG'
+                        ? 'text-emerald-400 font-bold'
+                        : 'text-rose-400 font-bold'
+                    }
+                  >
+                    {log.direction}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[#94A3B8]">
+                  <span>
+                    Entry <strong className="text-[#FDFBF7]">{log.entryPrice}</strong>
+                  </span>
+                  <span>
+                    SL <strong className="text-rose-400">{log.stopLoss}</strong>
+                  </span>
+                </div>
+                <div className="text-[10px] text-[#94A3B8] flex justify-between border-t border-[#D4AF37]/10 pt-1">
+                  <span>Tgt {log.target}</span>
+                  <span>{log.time}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#070E1C] text-[#94A3B8] border-b border-[#D4AF37]/15">
-              <tr>
-                <th className="p-3.5">HORIZON</th>
-                <th className="p-3.5">BAND</th>
-                <th className="p-3.5">LABEL</th>
-                <th className="p-3.5">NOTE</th>
-                <th className="p-3.5">EXAMPLE CUT</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#D4AF37]/10 text-[#FDFBF7]">
-              {timeProjections.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-4 text-[#94A3B8]">
-                    Waiting for Angel LTP…
-                  </td>
-                </tr>
-              ) : (
-                timeProjections.map((row, i) => (
-                  <tr key={i} className="hover:bg-[#D4AF37]/5">
-                    <td className="p-3.5 font-bold text-[#D4AF37]">{row.horizon}</td>
-                    <td className="p-3.5 text-emerald-400 font-bold font-mono">
-                      {row.targetBand}
-                    </td>
-                    <td className="p-3.5">{row.bias}</td>
-                    <td className="p-3.5 text-[#CBD5E1]">{row.note}</td>
-                    <td className="p-3.5 text-rose-400 font-bold">{row.invalidation}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      )}
+
+      {isLogModalOpen && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0D182E] border-2 border-[#D4AF37] w-full max-w-md rounded-2xl p-6 space-y-4 relative">
+            <button
+              type="button"
+              onClick={() => setIsLogModalOpen(false)}
+              className="absolute top-4 right-4 text-[#94A3B8]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-base font-bold text-[#FDFBF7] font-serif">Log setup</h3>
+            <form onSubmit={handleSaveTrade} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLogForm({ ...logForm, direction: 'LONG' })}
+                  className={`py-2 rounded-lg font-bold ${
+                    logForm.direction === 'LONG'
+                      ? 'bg-emerald-500 text-black'
+                      : 'border border-emerald-500/30 text-[#94A3B8]'
+                  }`}
+                >
+                  LONG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogForm({ ...logForm, direction: 'SHORT' })}
+                  className={`py-2 rounded-lg font-bold ${
+                    logForm.direction === 'SHORT'
+                      ? 'bg-rose-500 text-black'
+                      : 'border border-rose-500/30 text-[#94A3B8]'
+                  }`}
+                >
+                  SHORT
+                </button>
+              </div>
+              <input
+                className="w-full bg-[#070E1C] border border-[#D4AF37]/30 rounded-lg p-2 text-[#FDFBF7]"
+                placeholder={
+                  spot != null ? `Entry (spot ~ ${spot.toFixed(1)})` : 'Entry'
+                }
+                value={logForm.entryPrice}
+                onChange={(e) => setLogForm({ ...logForm, entryPrice: e.target.value })}
+              />
+              <input
+                className="w-full bg-[#070E1C] border border-rose-500/30 rounded-lg p-2 text-rose-300"
+                placeholder="Stop loss"
+                value={logForm.stopLoss}
+                onChange={(e) => setLogForm({ ...logForm, stopLoss: e.target.value })}
+              />
+              <input
+                className="w-full bg-[#070E1C] border border-[#D4AF37]/30 rounded-lg p-2 text-[#FDFBF7]"
+                placeholder="Target"
+                value={logForm.target}
+                onChange={(e) => setLogForm({ ...logForm, target: e.target.value })}
+              />
+              <button
+                type="submit"
+                className="w-full bg-[#D4AF37] text-[#070E1C] font-bold py-2.5 rounded-lg"
+              >
+                Save
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -271,8 +413,8 @@ export const UniversalStockScreener: React.FC = () => {
     'HDFCBANK',
     'ICICIBANK',
     'INFY',
-    'TATASTEEL',
     'SBIN',
+    'TATASTEEL',
     'DIXON',
     'IRFC',
   ]
@@ -294,20 +436,19 @@ export const UniversalStockScreener: React.FC = () => {
       <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-5 rounded-2xl flex flex-col md:flex-row justify-between gap-4">
         <div>
           <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">Stock Chart Desk</h2>
-          <p className="text-xs text-[#94A3B8]">TradingView {nse}</p>
+          <p className="text-xs text-[#94A3B8]">{nse}</p>
         </div>
         <form onSubmit={handleSearch} className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3 top-3 text-[#D4AF37]" />
           <input
-            type="text"
-            placeholder="Symbol e.g. SBIN"
+            className="w-full bg-[#070E1C] border border-[#D4AF37]/40 rounded-xl pl-9 pr-20 py-2.5 text-xs text-[#FDFBF7]"
+            placeholder="Symbol"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
-            className="w-full bg-[#070E1C] border border-[#D4AF37]/40 rounded-xl pl-9 pr-20 py-2.5 text-xs text-[#FDFBF7] focus:outline-none focus:border-[#D4AF37]"
           />
           <button
             type="submit"
-            className="absolute right-1.5 top-1.5 bg-[#D4AF37] text-[#070E1C] px-3.5 py-1 rounded-lg text-xs font-bold"
+            className="absolute right-1.5 top-1.5 bg-[#D4AF37] text-[#070E1C] px-3 py-1 rounded-lg text-xs font-bold"
           >
             Load
           </button>
@@ -321,54 +462,39 @@ export const UniversalStockScreener: React.FC = () => {
             onClick={() => setActiveSymbol(sym)}
             className={`px-3 py-1.5 rounded-lg border shrink-0 ${
               activeSymbol === sym
-                ? 'bg-[#D4AF37] text-[#070E1C] border-[#D4AF37] font-bold'
-                : 'bg-[#0D182E] border-[#D4AF37]/20 text-[#CBD5E1]'
+                ? 'bg-[#D4AF37] text-[#070E1C] font-bold'
+                : 'border-[#D4AF37]/20 text-[#CBD5E1]'
             }`}
           >
             {sym}
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-[#0D182E] border border-[#D4AF37]/30 p-4 rounded-2xl">
-          <div className="w-full h-[520px] rounded-xl overflow-hidden bg-black border border-[#1E2E4E]">
-            <iframe
-              key={`chart-${activeSymbol}`}
-              title={nse}
-              className="w-full h-full border-none"
-              src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(
-                nse,
-              )}&interval=D&theme=dark&style=1&timezone=Asia%2FKolkata`}
-            />
-          </div>
-        </div>
-        <div className="bg-[#0D182E] border border-rose-500/30 p-4 rounded-2xl text-xs">
-          <span className="text-rose-400 font-bold flex items-center gap-1.5 mb-2">
-            <ShieldAlert className="w-4 h-4" /> Risk
-          </span>
-          <p className="text-[#CBD5E1]">
-            Confirm {activeSymbol} price on broker before any order.
-          </p>
-        </div>
+      <div className="w-full h-[520px] rounded-xl overflow-hidden border border-[#1E2E4E] bg-black">
+        <iframe
+          key={nse}
+          title={nse}
+          className="w-full h-full border-none"
+          src={`https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(
+            nse,
+          )}&interval=D&theme=dark&style=1&timezone=Asia%2FKolkata`}
+        />
       </div>
     </div>
   )
 }
 
 export const InstitutionalFlowsDesk: React.FC = () => (
-  <div className="space-y-4 font-mono">
+  <div className="space-y-3 font-mono text-sm text-[#CBD5E1]">
     <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">FII / DII</h2>
-    <p className="text-xs text-[#94A3B8]">
-      Official EOD:{' '}
-      <a
-        className="text-[#D4AF37] underline"
-        href="https://www.nseindia.com/reports/fii-dii"
-        target="_blank"
-        rel="noreferrer"
-      >
-        NSE FII/DII report
-      </a>
-    </p>
+    <a
+      className="text-[#D4AF37] underline text-xs"
+      href="https://www.nseindia.com/reports/fii-dii"
+      target="_blank"
+      rel="noreferrer"
+    >
+      Official NSE FII/DII report
+    </a>
   </div>
 )
 
@@ -387,7 +513,7 @@ export const VisualNewsWireDesk: React.FC = () => (
 
 export const SectorEtfMatrix: React.FC = () => (
   <div className="space-y-4 font-mono">
-    <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">ETF charts</h2>
+    <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">ETFs</h2>
     <div className="grid md:grid-cols-2 gap-3">
       {['NSE:SILVERBEES', 'NSE:GOLDBEES', 'NSE:ITBEES', 'NSE:BANKBEES'].map((sym) => (
         <div key={sym} className="bg-[#0D182E] border border-[#D4AF37]/25 p-3 rounded-xl">
@@ -408,20 +534,17 @@ export const SectorEtfMatrix: React.FC = () => (
 )
 
 export const RiskProtocolDesk: React.FC = () => (
-  <div className="space-y-4 font-mono">
+  <div className="space-y-4 font-mono text-xs text-[#CBD5E1]">
     <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">Risk protocol</h2>
-    <div className="grid md:grid-cols-3 gap-4 text-xs text-[#CBD5E1]">
+    <div className="grid md:grid-cols-3 gap-4">
       <div className="bg-[#0D182E] border border-[#D4AF37]/25 p-5 rounded-2xl">
-        <ShieldAlert className="w-4 h-4 text-[#D4AF37] mb-2" />
-        Risk small fixed % of capital per idea.
+        <ShieldAlert className="w-4 h-4 text-[#D4AF37] mb-2" /> Fixed size · fixed % risk
       </div>
       <div className="bg-[#0D182E] border border-[#D4AF37]/25 p-5 rounded-2xl">
-        <Activity className="w-4 h-4 text-amber-300 mb-2" />
-        Pre-define invalidation before entry.
+        <Activity className="w-4 h-4 text-amber-300 mb-2" /> ORB / stop defined before entry
       </div>
       <div className="bg-[#0D182E] border border-[#D4AF37]/25 p-5 rounded-2xl">
-        <Zap className="w-4 h-4 text-emerald-400 mb-2" />
-        Confirm LTP on broker app always.
+        <Zap className="w-4 h-4 text-emerald-400 mb-2" /> Confirm price on broker
       </div>
     </div>
   </div>
@@ -449,9 +572,7 @@ export function IpoDeskPage() {
   return <div className="text-sm text-[#FDFBF7]">IPO — NSE / SEBI</div>
 }
 export function FinancialAdvisorConsensus() {
-  return (
-    <div className="text-sm text-[#CBD5E1]">Use broker research — no fake targets.</div>
-  )
+  return <div className="text-sm text-[#CBD5E1]">Broker research only</div>
 }
 
 export const ExtraPages: React.FC = () => <FoDecisionDesk />
