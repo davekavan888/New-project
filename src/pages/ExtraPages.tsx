@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Search,
   BarChart2,
@@ -13,16 +13,17 @@ import {
   CheckCircle2,
   XCircle,
   Newspaper,
+  BookOpen,
 } from 'lucide-react'
 
 const BRIDGE_URL = String(
   (import.meta as any).env?.VITE_ANGEL_BRIDGE_URL || '',
 ).replace(/\/$/, '')
 
-const FORECAST_KEY = 'novaforge_forecast_log_v1'
+const FORECAST_KEY = 'novaforge_kd_forecast_v2'
 const JOURNAL_KEY = 'novaforge_journal'
 
-type Horizon = '5m' | '10m' | '30m'
+type Horizon = '10m' | '30m' | '2h' | 'eod'
 type Bias = 'BULL' | 'BEAR' | 'RANGE'
 
 interface ForecastRecord {
@@ -39,6 +40,7 @@ interface ForecastRecord {
   exitLtp?: number
   result?: 'HIT' | 'MISS' | 'PENDING'
   reason?: string
+  agentNote?: string
 }
 
 interface TradeLog {
@@ -50,6 +52,39 @@ interface TradeLog {
   stopLoss: string
   target: string
 }
+
+const PLAYBOOK: { id: string; title: string; body: string }[] = [
+  {
+    id: 'orb',
+    title: 'Opening Range (ORB)',
+    body: 'First 15 minutes (9:15–9:30 IST) set the opening range. Mark high/low after 9:30. Break + hold above high with volume = bullish structure interest; break below low = bearish. Fake breaks are common — wait for a retest when unsure.',
+  },
+  {
+    id: 'vwap',
+    title: 'VWAP discipline',
+    body: 'VWAP is an average price anchor for the session (visible on chart studies). Sustained trade above VWAP often supports long bias for intraday; below supports short bias. A close back through VWAP against your position is a classic invalidation cue — not a guarantee.',
+  },
+  {
+    id: 'invalidation',
+    title: 'Invalidation first',
+    body: 'Before entry, write the price that proves you wrong. If hit, exit — no averaging down on intraday options. Size so that stop loss is a small fixed % of capital.',
+  },
+  {
+    id: 'session',
+    title: 'Session clock (IST)',
+    body: '9:15–9:45: volatility high, wider stops. 10:00–14:00: often cleaner structure. 14:30–15:15: positioning into close; 3:15 PM is cash equity close — square off or accept overnight risk only if planned.',
+  },
+  {
+    id: 'rr',
+    title: 'Risk : Reward',
+    body: 'Prefer setups where target is at least ~1.5–2.5× the stop distance. If R:R is poor, skip even if direction feels right.',
+  },
+  {
+    id: 'notrade',
+    title: 'When KD says WAIT',
+    body: 'No live LTP feed, unclear level, mid-range chop with no ORB context, or you already hit daily loss limit — WAIT is a valid professional outcome.',
+  },
+]
 
 function parseLtp(data: any, underlying: string): number | null {
   if (!data) return null
@@ -68,10 +103,39 @@ function parseLtp(data: any, underlying: string): number | null {
   return null
 }
 
-function horizonMs(h: Horizon) {
-  if (h === '5m') return 5 * 60 * 1000
-  if (h === '10m') return 10 * 60 * 1000
-  return 30 * 60 * 1000
+function getIstNowParts() {
+  const dtf = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+  const o: Record<string, string> = {}
+  for (const p of dtf.formatToParts(new Date())) {
+    if (p.type !== 'literal') o[p.type] = p.value
+  }
+  return o
+}
+
+/** Timestamp for today 15:15:00 IST */
+function today315IstMs(): number {
+  const p = getIstNowParts()
+  return Date.parse(`${p.year}-${p.month}-${p.day}T15:15:00+05:30`)
+}
+
+function horizonResolveAt(h: Horizon): number {
+  const now = Date.now()
+  if (h === '10m') return now + 10 * 60 * 1000
+  if (h === '30m') return now + 30 * 60 * 1000
+  if (h === '2h') return now + 2 * 60 * 60 * 1000
+  const eod = today315IstMs()
+  if (eod > now + 30_000) return eod
+  // past 3:15 — resolve in 2 minutes so user can still test scorecard
+  return now + 2 * 60 * 1000
 }
 
 function loadForecasts(): ForecastRecord[] {
@@ -85,70 +149,73 @@ function loadForecasts(): ForecastRecord[] {
 
 function saveForecasts(rows: ForecastRecord[]) {
   try {
-    localStorage.setItem(FORECAST_KEY, JSON.stringify(rows.slice(0, 80)))
+    localStorage.setItem(FORECAST_KEY, JSON.stringify(rows.slice(0, 100)))
   } catch {
-    /* ignore */
+    /* */
   }
 }
 
 function evaluateForecast(f: ForecastRecord, exitLtp: number): ForecastRecord {
-  const inBand = exitLtp >= f.low && exitLtp <= f.high
   let result: 'HIT' | 'MISS' = 'MISS'
   let reason = ''
 
   if (f.bias === 'RANGE') {
+    const inBand = exitLtp >= f.low && exitLtp <= f.high
     result = inBand ? 'HIT' : 'MISS'
     reason = inBand
-      ? `Price stayed inside band ${f.low.toFixed(1)}–${f.high.toFixed(1)}`
-      : `Price left band (exit ${exitLtp.toFixed(1)} vs ${f.low.toFixed(1)}–${f.high.toFixed(1)})`
+      ? `Range held: exit ${exitLtp.toFixed(1)} inside ${f.low.toFixed(1)}–${f.high.toFixed(1)}`
+      : `Range break: exit ${exitLtp.toFixed(1)} outside ${f.low.toFixed(1)}–${f.high.toFixed(1)}`
   } else if (f.bias === 'BULL') {
-    // HIT if ended above entry and not below invalidation (low)
-    if (exitLtp >= f.entryLtp && exitLtp >= f.low) {
-      result = exitLtp <= f.high || exitLtp > f.entryLtp ? 'HIT' : 'MISS'
-      reason =
-        exitLtp >= f.entryLtp
-          ? `Bull call: price finished above lock ${f.entryLtp.toFixed(1)} (exit ${exitLtp.toFixed(1)})`
-          : `Bull call failed`
-    } else {
-      result = 'MISS'
-      reason = `Bull call missed: exit ${exitLtp.toFixed(1)} below entry/lock zone`
-    }
     if (exitLtp < f.low) {
       result = 'MISS'
-      reason = `Broke below invalidation ${f.low.toFixed(1)}`
-    } else if (exitLtp > f.entryLtp) {
+      reason = `Bull invalidated below ${f.low.toFixed(1)} (exit ${exitLtp.toFixed(1)})`
+    } else if (exitLtp >= f.entryLtp) {
       result = 'HIT'
-      reason = `Bullish drift: ${f.entryLtp.toFixed(1)} → ${exitLtp.toFixed(1)}`
-    }
-  } else {
-    // BEAR
-    if (exitLtp <= f.entryLtp && exitLtp <= f.high) {
-      result = 'HIT'
-      reason = `Bear call: price finished below lock ${f.entryLtp.toFixed(1)}`
+      reason = `Bull drift: ${f.entryLtp.toFixed(1)} → ${exitLtp.toFixed(1)}`
     } else {
       result = 'MISS'
-      reason = `Bear call missed: exit ${exitLtp.toFixed(1)} did not hold below entry`
+      reason = `Bull failed: exit ${exitLtp.toFixed(1)} below lock ${f.entryLtp.toFixed(1)}`
     }
+  } else {
     if (exitLtp > f.high) {
       result = 'MISS'
-      reason = `Broke above invalidation ${f.high.toFixed(1)}`
-    } else if (exitLtp < f.entryLtp) {
+      reason = `Bear invalidated above ${f.high.toFixed(1)} (exit ${exitLtp.toFixed(1)})`
+    } else if (exitLtp <= f.entryLtp) {
       result = 'HIT'
-      reason = `Bearish drift: ${f.entryLtp.toFixed(1)} → ${exitLtp.toFixed(1)}`
+      reason = `Bear drift: ${f.entryLtp.toFixed(1)} → ${exitLtp.toFixed(1)}`
+    } else {
+      result = 'MISS'
+      reason = `Bear failed: exit ${exitLtp.toFixed(1)} above lock ${f.entryLtp.toFixed(1)}`
     }
   }
 
-  return {
-    ...f,
-    resolved: true,
-    exitLtp,
-    result,
-    reason,
+  return { ...f, resolved: true, exitLtp, result, reason }
+}
+
+function agentAdvice(opts: {
+  live: boolean
+  spot: number | null
+  underlying: string
+  pending: number
+  hitRate: number | null
+}): string {
+  if (!opts.live) {
+    return 'KD’s Agent: Feed not LIVE. I will not lock a call until Angel LTP is green. Use the chart only for structure — no forced trades.'
   }
+  if (opts.spot == null) {
+    return 'KD’s Agent: Waiting for a clean LTP tick…'
+  }
+  if (opts.pending > 2) {
+    return `KD’s Agent: You already have ${opts.pending} open calls on ${opts.underlying}. Let them resolve before stacking more bias.`
+  }
+  if (opts.hitRate != null && opts.hitRate < 40 && opts.hitRate >= 0) {
+    return `KD’s Agent: Recent hit rate ${opts.hitRate}%. Size down, demand clearer invalidation, or WAIT. Protect capital first.`
+  }
+  return `KD’s Agent: ${opts.underlying} at ${opts.spot.toFixed(1)}. Pick a horizon, choose BULL / RANGE / BEAR, lock only if your stop is defined. I score honesty — not hope.`
 }
 
 // =========================================================================
-// F&O + METERS + SCORECARD + NEWS
+// KD'S AGENT + F&O DESK
 // =========================================================================
 export const FoDecisionDesk: React.FC = () => {
   const [underlying, setUnderlying] = useState<'NIFTY' | 'BANKNIFTY' | 'SENSEX'>('NIFTY')
@@ -157,12 +224,14 @@ export const FoDecisionDesk: React.FC = () => {
   const [tickTimestamp, setTickTimestamp] = useState('--:--:--')
   const [err, setErr] = useState('')
 
-  const [bias5, setBias5] = useState<Bias>('RANGE')
   const [bias10, setBias10] = useState<Bias>('RANGE')
   const [bias30, setBias30] = useState<Bias>('RANGE')
+  const [bias2h, setBias2h] = useState<Bias>('RANGE')
+  const [biasEod, setBiasEod] = useState<Bias>('RANGE')
 
   const [forecasts, setForecasts] = useState<ForecastRecord[]>(() => loadForecasts())
   const [now, setNow] = useState(Date.now())
+  const [lesson, setLesson] = useState<string | null>(null)
 
   const [orbHigh, setOrbHigh] = useState('')
   const [orbLow, setOrbLow] = useState('')
@@ -226,18 +295,13 @@ export const FoDecisionDesk: React.FC = () => {
     return () => clearInterval(id)
   }, [])
 
-  // Auto-resolve scorecard when horizon ends
   useEffect(() => {
     if (liveLtp == null) return
     setForecasts((prev) => {
       let changed = false
       const next = prev.map((f) => {
-        if (f.resolved) return f
+        if (f.resolved || f.asset !== underlying) return f
         if (now < f.resolveAt) return f
-        if (f.asset !== underlying && f.asset !== 'NIFTY') {
-          // still resolve with current feed if same session asset match
-        }
-        if (f.asset !== underlying) return f
         changed = true
         return evaluateForecast(f, liveLtp)
       })
@@ -247,16 +311,27 @@ export const FoDecisionDesk: React.FC = () => {
   }, [now, liveLtp, underlying])
 
   const spot = liveLtp
-  const pad = underlying === 'BANKNIFTY' ? 40 : underlying === 'SENSEX' ? 80 : 20
+  const pad = underlying === 'BANKNIFTY' ? 45 : underlying === 'SENSEX' ? 90 : 22
 
   const bandFor = (bias: Bias, s: number) => {
-    if (bias === 'BULL') return { low: s - pad * 0.5, high: s + pad * 1.5 }
-    if (bias === 'BEAR') return { low: s - pad * 1.5, high: s + pad * 0.5 }
+    if (bias === 'BULL') return { low: s - pad * 0.5, high: s + pad * 1.6 }
+    if (bias === 'BEAR') return { low: s - pad * 1.6, high: s + pad * 0.5 }
     return { low: s - pad, high: s + pad }
   }
 
+  const assetForecasts = useMemo(
+    () => forecasts.filter((f) => f.asset === underlying),
+    [forecasts, underlying],
+  )
+  const resolved = assetForecasts.filter((f) => f.resolved)
+  const hits = resolved.filter((f) => f.result === 'HIT').length
+  const misses = resolved.filter((f) => f.result === 'MISS').length
+  const hitRate =
+    hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : null
+  const pending = assetForecasts.filter((f) => !f.resolved)
+
   const lockForecast = (horizon: Horizon, bias: Bias) => {
-    if (spot == null) return
+    if (!isBridgeLive || spot == null) return
     const { low, high } = bandFor(bias, spot)
     const rec: ForecastRecord = {
       id: `${Date.now()}-${horizon}`,
@@ -267,24 +342,23 @@ export const FoDecisionDesk: React.FC = () => {
       low,
       high,
       lockedAt: Date.now(),
-      resolveAt: Date.now() + horizonMs(horizon),
+      resolveAt: horizonResolveAt(horizon),
       resolved: false,
       result: 'PENDING',
+      agentNote: `KD locked ${horizon} ${bias} on ${underlying}`,
     }
     const next = [rec, ...forecasts]
     setForecasts(next)
     saveForecasts(next)
   }
 
-  const resolved = forecasts.filter((f) => f.resolved && f.asset === underlying)
-  const hits = resolved.filter((f) => f.result === 'HIT').length
-  const misses = resolved.filter((f) => f.result === 'MISS').length
-  const hitRate =
-    hits + misses > 0 ? Math.round((hits / (hits + misses)) * 100) : null
-
-  const pending = forecasts.filter(
-    (f) => !f.resolved && f.asset === underlying,
-  )
+  const advice = agentAdvice({
+    live: isBridgeLive,
+    spot,
+    underlying,
+    pending: pending.length,
+    hitRate,
+  })
 
   const oh = parseFloat(orbHigh)
   const ol = parseFloat(orbLow)
@@ -301,6 +375,12 @@ export const FoDecisionDesk: React.FC = () => {
   const tvSymbol =
     underlying === 'SENSEX' ? 'BSE:SENSEX' : `NSE:${underlying}`
 
+  const eodLabel = (() => {
+    const t = today315IstMs()
+    if (Date.now() > t) return '3:15 PM (past — quick resolve)'
+    return '3:15 PM IST'
+  })()
+
   const MeterCard = ({
     label,
     horizon,
@@ -313,6 +393,7 @@ export const FoDecisionDesk: React.FC = () => {
     setBias: (b: Bias) => void
   }) => {
     const b = spot != null ? bandFor(bias, spot) : null
+    const canLock = isBridgeLive && spot != null
     return (
       <div className="bg-[#0D182E] border border-[#D4AF37]/25 rounded-2xl p-4 space-y-3">
         <div className="flex justify-between items-center">
@@ -347,11 +428,11 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
         <button
           type="button"
-          disabled={spot == null}
+          disabled={!canLock}
           onClick={() => lockForecast(horizon, bias)}
           className="w-full py-2 rounded-xl text-xs font-bold bg-[#D4AF37] text-[#070E1C] disabled:opacity-40"
         >
-          Lock {horizon} call → scorecard
+          {canLock ? `KD lock ${horizon}` : 'Need LIVE LTP'}
         </button>
       </div>
     )
@@ -359,12 +440,73 @@ export const FoDecisionDesk: React.FC = () => {
 
   return (
     <div className="space-y-6 font-mono">
-      <p className="text-xs text-amber-100/90 border border-[#D4AF37]/30 rounded-xl px-3 py-2 bg-[#D4AF37]/5">
-        Meters are <strong>your locked calls</strong>, scored against later live LTP. Not a guaranteed
-        prediction engine. Green = HIT, Red = MISS + reason.
-      </p>
+      {/* KD'S AGENT HEADER */}
+      <div className="bg-gradient-to-r from-[#12203D] to-[#0D182E] border border-[#D4AF37]/40 rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="relative shrink-0">
+          <img
+            src="/kd-agent.svg"
+            alt="KD's Agent"
+            className="w-20 h-20 rounded-full border-2 border-[#D4AF37] shadow-[0_0_24px_rgba(212,175,55,0.35)] bg-[#070E1C]"
+          />
+          <span
+            className={`absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full border-2 border-[#0D182E] ${
+              isBridgeLive ? 'bg-emerald-400' : 'bg-amber-400'
+            }`}
+          />
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-serif font-black text-[#FDFBF7] tracking-wide">
+              KD&apos;s Agent
+            </h2>
+            <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#D4AF37]/40 text-[#D4AF37] font-bold">
+              DESK MENTOR · NOT SEBI ADVICE
+            </span>
+          </div>
+          <p className="text-xs text-[#CBD5E1] leading-relaxed">{advice}</p>
+          <p className="text-[10px] text-[#64748B]">
+            Horizons: 10m · 30m · 2h · {eodLabel}. Scorecard uses later live LTP.
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-[10px] text-[#94A3B8] uppercase">Agent hit rate</div>
+          <div className="text-2xl font-bold text-[#FDFBF7]">
+            {hitRate != null ? `${hitRate}%` : '—'}
+          </div>
+          <div className="text-[10px] text-[#94A3B8]">
+            {hits} hit · {misses} miss
+          </div>
+        </div>
+      </div>
 
-      {/* Header */}
+      {/* Playbook chips */}
+      <div className="flex flex-wrap gap-2">
+        {PLAYBOOK.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setLesson(lesson === p.id ? null : p.id)}
+            className={`text-[10px] px-2.5 py-1 rounded-lg border font-bold ${
+              lesson === p.id
+                ? 'bg-[#D4AF37] text-[#070E1C] border-[#D4AF37]'
+                : 'border-[#D4AF37]/25 text-[#D4AF37] hover:bg-[#D4AF37]/10'
+            }`}
+          >
+            <BookOpen className="w-3 h-3 inline mr-1" />
+            {p.title}
+          </button>
+        ))}
+      </div>
+      {lesson && (
+        <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl p-4 text-xs text-[#CBD5E1] leading-relaxed">
+          <strong className="text-[#D4AF37]">
+            {PLAYBOOK.find((p) => p.id === lesson)?.title}:{' '}
+          </strong>
+          {PLAYBOOK.find((p) => p.id === lesson)?.body}
+        </div>
+      )}
+
+      {/* Controls */}
       <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-5 rounded-2xl flex flex-col lg:flex-row justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -380,9 +522,7 @@ export const FoDecisionDesk: React.FC = () => {
             </span>
             {err ? <span className="text-[10px] text-amber-200">{err}</span> : null}
           </div>
-          <h2 className="text-xl font-serif font-bold text-[#FDFBF7]">
-            Forecast meters · scorecard · news
-          </h2>
+          <p className="text-xs text-[#94A3B8]">Index desk powered by KD&apos;s Agent</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex gap-1.5 bg-[#070E1C] p-1.5 rounded-xl border border-[#D4AF37]/30">
@@ -418,7 +558,6 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
       </div>
 
-      {/* Spot + ORB + score summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
           <span className="text-[10px] text-[#94A3B8] uppercase block">Spot LTP</span>
@@ -447,32 +586,26 @@ export const FoDecisionDesk: React.FC = () => {
           />
         </div>
         <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">ORB status</span>
+          <span className="text-[10px] text-[#94A3B8] uppercase block">ORB</span>
           <span className={`text-sm font-bold ${orbStatus.color}`}>{orbStatus.text}</span>
         </div>
         <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] uppercase block">Scorecard</span>
-          <span className="text-2xl font-bold text-[#FDFBF7]">
-            {hitRate != null ? `${hitRate}%` : '—'}
-          </span>
-          <span className="text-[10px] text-[#94A3B8] block">
-            {hits} hit · {misses} miss
-          </span>
+          <span className="text-[10px] text-[#94A3B8] uppercase block">Open KD calls</span>
+          <span className="text-2xl font-bold text-[#FDFBF7]">{pending.length}</span>
         </div>
       </div>
 
-      {/* 5 / 10 / 30 meters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MeterCard label="Next 5 min" horizon="5m" bias={bias5} setBias={setBias5} />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <MeterCard label="Next 10 min" horizon="10m" bias={bias10} setBias={setBias10} />
         <MeterCard label="Next 30 min" horizon="30m" bias={bias30} setBias={setBias30} />
+        <MeterCard label="Next 2 hours" horizon="2h" bias={bias2h} setBias={setBias2h} />
+        <MeterCard label={eodLabel} horizon="eod" bias={biasEod} setBias={setBiasEod} />
       </div>
 
-      {/* Pending timers */}
       {pending.length > 0 && (
         <div className="bg-[#0D182E] border border-[#D4AF37]/25 rounded-2xl p-4 space-y-2">
           <span className="text-xs font-bold text-[#D4AF37] uppercase flex items-center gap-2">
-            <Clock className="w-4 h-4" /> Open calls (waiting for time + LTP)
+            <Clock className="w-4 h-4" /> KD open calls
           </span>
           {pending.map((f) => {
             const left = Math.max(0, f.resolveAt - now)
@@ -484,10 +617,10 @@ export const FoDecisionDesk: React.FC = () => {
                 className="flex flex-wrap justify-between gap-2 text-xs bg-[#070E1C] border border-[#D4AF37]/15 rounded-xl px-3 py-2"
               >
                 <span className="text-[#FDFBF7] font-bold">
-                  {f.horizon} · {f.bias} · lock {f.entryLtp.toFixed(1)}
+                  {f.horizon} · {f.bias} · {f.entryLtp.toFixed(1)}
                 </span>
                 <span className="text-amber-300">
-                  resolves in {m}:{String(s).padStart(2, '0')}
+                  {m}:{String(s).padStart(2, '0')} left
                 </span>
               </div>
             )
@@ -495,10 +628,9 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
       )}
 
-      {/* Scorecard history */}
       <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-2xl overflow-hidden">
         <div className="p-4 bg-[#12203D] border-b border-[#D4AF37]/20 text-xs font-bold text-[#D4AF37] uppercase">
-          Report card — locked calls vs later live LTP
+          KD&apos;s Agent report card (HIT green / MISS red + reason)
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -513,54 +645,50 @@ export const FoDecisionDesk: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#D4AF37]/10 text-[#FDFBF7]">
-              {forecasts.filter((f) => f.asset === underlying).length === 0 ? (
+              {assetForecasts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-4 text-[#94A3B8]">
-                    Lock a 5m / 10m / 30m call above. When time ends, result turns green or red.
+                    Lock a KD call when LTP is LIVE. Results appear after the horizon ends.
                   </td>
                 </tr>
               ) : (
-                forecasts
-                  .filter((f) => f.asset === underlying)
-                  .slice(0, 12)
-                  .map((f) => (
-                    <tr key={f.id} className="hover:bg-[#D4AF37]/5">
-                      <td className="p-3 text-[#94A3B8]">
-                        {new Date(f.lockedAt).toLocaleTimeString('en-IN', {
-                          timeZone: 'Asia/Kolkata',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="p-3 font-bold text-[#D4AF37]">{f.horizon}</td>
-                      <td className="p-3">{f.bias}</td>
-                      <td className="p-3 font-mono">
-                        {f.entryLtp.toFixed(1)}
-                        {f.exitLtp != null ? ` → ${f.exitLtp.toFixed(1)}` : ' → …'}
-                      </td>
-                      <td className="p-3">
-                        {f.result === 'HIT' ? (
-                          <span className="text-emerald-400 font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> HIT
-                          </span>
-                        ) : f.result === 'MISS' ? (
-                          <span className="text-rose-400 font-bold flex items-center gap-1">
-                            <XCircle className="w-3.5 h-3.5" /> MISS
-                          </span>
-                        ) : (
-                          <span className="text-amber-300">PENDING</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-[#CBD5E1] max-w-xs">{f.reason || '—'}</td>
-                    </tr>
-                  ))
+                assetForecasts.slice(0, 15).map((f) => (
+                  <tr key={f.id} className="hover:bg-[#D4AF37]/5">
+                    <td className="p-3 text-[#94A3B8]">
+                      {new Date(f.lockedAt).toLocaleTimeString('en-IN', {
+                        timeZone: 'Asia/Kolkata',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="p-3 font-bold text-[#D4AF37]">{f.horizon}</td>
+                    <td className="p-3">{f.bias}</td>
+                    <td className="p-3 font-mono">
+                      {f.entryLtp.toFixed(1)}
+                      {f.exitLtp != null ? ` → ${f.exitLtp.toFixed(1)}` : ' → …'}
+                    </td>
+                    <td className="p-3">
+                      {f.result === 'HIT' ? (
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> HIT
+                        </span>
+                      ) : f.result === 'MISS' ? (
+                        <span className="text-rose-400 font-bold flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5" /> MISS
+                        </span>
+                      ) : (
+                        <span className="text-amber-300">PENDING</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-[#CBD5E1] max-w-xs">{f.reason || '—'}</td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Chart */}
       <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-4 rounded-2xl">
         <div className="flex justify-between mb-3 text-xs">
           <span className="font-bold text-[#FDFBF7] flex items-center gap-2">
@@ -579,55 +707,18 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
       </div>
 
-      {/* News — India + global style timeline */}
       <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-2xl p-4 space-y-3">
         <div className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] uppercase">
-          <Newspaper className="w-4 h-4" /> Live market news timeline (TradingView)
+          <Newspaper className="w-4 h-4" /> Market news timeline
         </div>
-        <p className="text-[11px] text-[#94A3B8]">
-          Use headlines for context only. Confirm impact on price with LTP + chart — news alone is not
-          a signal.
-        </p>
-        <div className="w-full h-[420px] rounded-xl overflow-hidden border border-[#1E2E4E] bg-black">
+        <div className="w-full h-[380px] rounded-xl overflow-hidden border border-[#1E2E4E] bg-black">
           <iframe
             title="news"
             className="w-full h-full border-none"
             src="https://s.tradingview.com/embed-widget/timeline/?locale=en#%7B%22feedMode%22%3A%22all_symbols%22%2C%22isTransparent%22%3Atrue%2C%22displayMode%22%3A%22regular%22%2C%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%2C%22colorTheme%22%3A%22dark%22%7D"
           />
         </div>
-        <div className="flex flex-wrap gap-3 text-[11px]">
-          <a
-            className="text-[#D4AF37] underline"
-            href="https://www.moneycontrol.com/news/business/markets/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Moneycontrol markets
-          </a>
-          <a
-            className="text-[#D4AF37] underline"
-            href="https://www.bloomberg.com/markets"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Bloomberg markets
-          </a>
-          <a
-            className="text-[#D4AF37] underline"
-            href="https://www.nseindia.com/reports/fii-dii"
-            target="_blank"
-            rel="noreferrer"
-          >
-            NSE FII/DII
-          </a>
-        </div>
       </div>
-
-      {journalLogs.length > 0 && (
-        <div className="text-xs text-[#94A3B8]">
-          Trade logs stored: {journalLogs.length} (this browser)
-        </div>
-      )}
 
       {isLogModalOpen && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
@@ -672,7 +763,9 @@ export const FoDecisionDesk: React.FC = () => {
                 <button
                   type="button"
                   className={`py-2 rounded-lg font-bold ${
-                    logForm.direction === 'LONG' ? 'bg-emerald-500 text-black' : 'border border-emerald-500/30'
+                    logForm.direction === 'LONG'
+                      ? 'bg-emerald-500 text-black'
+                      : 'border border-emerald-500/30'
                   }`}
                   onClick={() => setLogForm({ ...logForm, direction: 'LONG' })}
                 >
@@ -681,7 +774,9 @@ export const FoDecisionDesk: React.FC = () => {
                 <button
                   type="button"
                   className={`py-2 rounded-lg font-bold ${
-                    logForm.direction === 'SHORT' ? 'bg-rose-500 text-black' : 'border border-rose-500/30'
+                    logForm.direction === 'SHORT'
+                      ? 'bg-rose-500 text-black'
+                      : 'border border-rose-500/30'
                   }`}
                   onClick={() => setLogForm({ ...logForm, direction: 'SHORT' })}
                 >
@@ -706,7 +801,10 @@ export const FoDecisionDesk: React.FC = () => {
                 value={logForm.target}
                 onChange={(e) => setLogForm({ ...logForm, target: e.target.value })}
               />
-              <button type="submit" className="w-full bg-[#D4AF37] text-[#070E1C] font-bold py-2 rounded-lg">
+              <button
+                type="submit"
+                className="w-full bg-[#D4AF37] text-[#070E1C] font-bold py-2 rounded-lg"
+              >
                 Save
               </button>
             </form>
@@ -722,7 +820,11 @@ export const UniversalStockScreener: React.FC = () => {
   const [inputVal, setInputVal] = useState('')
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    const clean = inputVal.trim().toUpperCase().replace(/\.NS$/i, '').replace(/^NSE:/i, '')
+    const clean = inputVal
+      .trim()
+      .toUpperCase()
+      .replace(/\.NS$/i, '')
+      .replace(/^NSE:/i, '')
     if (clean) {
       setActiveSymbol(clean)
       setInputVal('')
@@ -788,19 +890,19 @@ export const VisualNewsWireDesk: React.FC = () => (
 )
 
 export const SectorEtfMatrix: React.FC = () => (
-  <div className="font-mono text-sm text-[#CBD5E1]">ETF charts on F&O / screener style — use Screener for symbols.</div>
+  <div className="font-mono text-sm text-[#CBD5E1]">Use Screener for ETF symbols (e.g. SILVERBEES).</div>
 )
 
 export const RiskProtocolDesk: React.FC = () => (
   <div className="grid md:grid-cols-3 gap-4 text-xs text-[#CBD5E1] font-mono">
     <div className="bg-[#0D182E] border border-[#D4AF37]/25 p-5 rounded-2xl">
-      <ShieldAlert className="w-4 h-4 text-[#D4AF37] mb-2" /> Fixed % risk
+      <ShieldAlert className="w-4 h-4 text-[#D4AF37] mb-2" /> Fixed % risk · KD agrees
     </div>
     <div className="bg-[#0D182E] border border-[#D4AF37]/25 p-5 rounded-2xl">
-      <Activity className="w-4 h-4 text-amber-300 mb-2" /> Lock forecast only when LTP is LIVE
+      <Activity className="w-4 h-4 text-amber-300 mb-2" /> No lock without LIVE LTP
     </div>
     <div className="bg-[#0D182E] border border-[#D4AF37]/25 p-5 rounded-2xl">
-      <Zap className="w-4 h-4 text-emerald-400 mb-2" /> Broker confirms price
+      <Zap className="w-4 h-4 text-emerald-400 mb-2" /> Broker confirms every order
     </div>
   </div>
 )
