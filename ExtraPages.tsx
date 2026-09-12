@@ -202,26 +202,26 @@ export const HistoricalReportDesk: React.FC = () => {
     }, {})
 
   return (
-    <div className="space-y-6 font-mono text-[#F8FAFC]">
+    <div className="space-y-6 font-mono text-[#f7f0dd]">
       <div>
         <h2 className="text-xl font-serif font-bold">Report card · 5 working days</h2>
-        <p className="text-xs text-[#94A3B8]">
+        <p className="text-xs text-[#a8c0d0]">
           All LOCK + 45m audit rows. Opens of the site backfill pending windows. For true
           offline scoring, Railway bridge must stay online (see note in F&amp;O tab).
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-        <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-3 rounded-xl">
-          <div className="text-[#D4AF37] font-bold mb-1">Self-tune counters</div>
+        <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/40 p-3 rounded-xl">
+          <div className="text-[#e8c547] font-bold mb-1">Self-tune counters</div>
           <div>Prefer WAIT in chop: {weights.preferWaitInChop}</div>
           <div>Stronger break preference: {weights.requireStrongerBreak}</div>
           <div>Widen stop preference: {weights.widenStop}</div>
         </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-3 rounded-xl md:col-span-2">
-          <div className="text-[#D4AF37] font-bold mb-1">MISS reasons (improve here)</div>
+        <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/40 p-3 rounded-xl md:col-span-2">
+          <div className="text-[#e8c547] font-bold mb-1">MISS reasons (improve here)</div>
           {Object.keys(failCounts).length === 0 ? (
-            <span className="text-[#64748B]">No misses yet</span>
+            <span className="text-[#8aa0b5]">No misses yet</span>
           ) : (
             <div className="flex flex-wrap gap-2">
               {Object.entries(failCounts).map(([k, v]) => (
@@ -235,7 +235,7 @@ export const HistoricalReportDesk: React.FC = () => {
       </div>
 
       {days.length === 0 ? (
-        <p className="text-xs text-[#64748B]">No saved days yet.</p>
+        <p className="text-xs text-[#8aa0b5]">No saved days yet.</p>
       ) : (
         days.map((day) => {
           const list = byDay[day]
@@ -243,17 +243,17 @@ export const HistoricalReportDesk: React.FC = () => {
           const miss = list.filter((r) => r.status === 'MISS').length
           const flat = list.filter((r) => r.status === 'FLAT' || r.status === 'SKIP').length
           return (
-            <div key={day} className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl overflow-hidden">
-              <div className="p-3 bg-[#111F38] border-b border-[#D4AF37]/20 flex flex-wrap gap-3 text-xs font-bold">
-                <span className="text-[#D4AF37]">{day}</span>
+            <div key={day} className="bg-[#1e3a5f]/90 border border-[#c9a227]/40 rounded-xl overflow-hidden">
+              <div className="p-3 bg-[#2a4a6e] border-b border-[#c9a227]/30 flex flex-wrap gap-3 text-xs font-bold">
+                <span className="text-[#e8c547]">{day}</span>
                 <span className="text-emerald-400">HIT {hits}</span>
                 <span className="text-rose-400">MISS {miss}</span>
-                <span className="text-[#94A3B8]">FLAT/SKIP {flat}</span>
+                <span className="text-[#a8c0d0]">FLAT/SKIP {flat}</span>
                 <span>N={list.length}</span>
               </div>
               <div className="overflow-x-auto max-h-64 overflow-y-auto">
                 <table className="w-full text-left text-[11px]">
-                  <thead className="text-[#94A3B8] sticky top-0 bg-[#070E1C]">
+                  <thead className="text-[#a8c0d0] sticky top-0 bg-[#152a45]/90">
                     <tr>
                       <th className="p-2">Time</th>
                       <th className="p-2">Kind</th>
@@ -265,17 +265,17 @@ export const HistoricalReportDesk: React.FC = () => {
                       <th className="p-2">Why fail / note</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#D4AF37]/10">
+                  <tbody className="divide-y divide-[#c9a227]/20">
                     {list.map((r) => (
                       <tr key={r.id}>
-                        <td className="p-2 text-[#94A3B8]">
+                        <td className="p-2 text-[#a8c0d0]">
                           {new Date(r.resolvedAt).toLocaleTimeString('en-IN', {
                             hour12: false,
                             timeZone: 'Asia/Kolkata',
                           })}
                         </td>
                         <td className="p-2">{r.kind}</td>
-                        <td className="p-2 text-[#D4AF37]">{r.horizon}</td>
+                        <td className="p-2 text-[#e8c547]">{r.horizon}</td>
                         <td className="p-2 font-bold">{r.direction}</td>
                         <td className="p-2">{r.entryPrice.toFixed(1)}</td>
                         <td className="p-2">{r.exitPrice.toFixed(1)}</td>
@@ -290,7 +290,7 @@ export const HistoricalReportDesk: React.FC = () => {
                         >
                           {r.status}
                         </td>
-                        <td className="p-2 text-[#CBD5E1]">
+                        <td className="p-2 text-[#c5d5e0]">
                           {r.status === 'MISS' ? r.failReason : r.note || '—'}
                         </td>
                       </tr>
@@ -642,23 +642,40 @@ export const FoDecisionDesk: React.FC = () => {
   const pendingAudit = audits.find((a) => a.symbol === symbol && a.expiresAt > now)
 
   return (
-    <div className="space-y-6 font-mono text-[#F8FAFC]">
-      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-100">
+    <div className="space-y-6 font-mono text-[#f7f0dd]">
+      {/* Palace advisor */}
+      <div className="rounded-2xl border-2 border-[#c9a227]/50 bg-gradient-to-r from-[#2c5282] via-[#2a4a6e] to-[#1b4332] p-4 flex flex-col sm:flex-row gap-4 items-center shadow-xl">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-b from-[#f0d77b] to-[#c9a227] flex items-center justify-center text-4xl shadow-lg border-2 border-[#f7f0dd]/40 shrink-0">
+          🧙‍♂️
+        </div>
+        <div className="flex-1 text-center sm:text-left space-y-1">
+          <div className="text-[#e8c547] text-[10px] tracking-[0.2em] uppercase font-bold">Court Advisor · KD&apos;s Agent</div>
+          <div className="text-lg font-serif font-bold text-[#f7f0dd]">Guidance from the trading court</div>
+          <p className="text-xs text-[#c5d5e0] leading-relaxed">
+            Clear levels only. Prefer WAIT when the range is unclear. Journal every lock — the report card is your real teacher.
+          </p>
+        </div>
+        <div className="text-center px-4 py-2 rounded-xl bg-black/20 border border-[#c9a227]/30">
+          <div className="text-[10px] text-[#a8c0d0]">Posture</div>
+          <div className="text-xl font-black text-[#f0d77b]">LIVE DESK</div>
+        </div>
+      </div>
+      <div className="bg-[#c9a227]/15 border border-[#c9a227]/40 rounded-xl p-3 text-[11px] text-[#f0e6c0]">
         <strong>Auto system:</strong> 45m audits run while this tab is open (or when you reopen —
         pending windows resolve on next live price). For scoring while phone is fully closed,
         Railway bridge must keep polling (backend). Frontend alone cannot score offline.
       </div>
 
-      <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-4 rounded-xl flex flex-col sm:flex-row justify-between gap-4">
+      <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/40 p-4 rounded-xl flex flex-col sm:flex-row justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-[#070E1C] p-1 rounded-lg border border-[#D4AF37]/30">
+          <div className="flex bg-[#152a45]/90 p-1 rounded-lg border border-[#c9a227]/40">
             {(['NIFTY', 'BANKNIFTY'] as SymbolKey[]).map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setSymbol(s)}
                 className={`px-4 py-1.5 rounded text-xs font-bold ${
-                  symbol === s ? 'bg-[#D4AF37] text-[#070E1C]' : 'text-[#94A3B8]'
+                  symbol === s ? 'bg-[#e8c547] text-[#1a2a1a]' : 'text-[#a8c0d0]'
                 }`}
               >
                 {s}
@@ -685,57 +702,57 @@ export const FoDecisionDesk: React.FC = () => {
             {isBridgeOnline ? `LIVE ${lastUpdated}` : 'BRIDGE OFF'}
           </span>
           {err ? <span className="text-amber-300 max-w-[180px] truncate">{err}</span> : null}
-          <button type="button" onClick={() => void fetchSnapshot()} className="p-1.5 border border-[#D4AF37]/30 rounded text-[#D4AF37]">
+          <button type="button" onClick={() => void fetchSnapshot()} className="p-1.5 border border-[#c9a227]/40 rounded text-[#e8c547]">
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
-          <div className="text-[10px] text-[#94A3B8]">ORB HIGH</div>
+        <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/30 p-3 rounded-xl">
+          <div className="text-[10px] text-[#a8c0d0]">ORB HIGH</div>
           <input
-            className="w-full mt-1 bg-[#070E1C] border border-emerald-500/30 rounded px-2 py-1 text-emerald-400 font-bold"
+            className="w-full mt-1 bg-[#152a45]/90 border border-emerald-500/30 rounded px-2 py-1 text-emerald-400 font-bold"
             value={orbHighInput}
             onChange={(e) => setOrbHighInput(e.target.value)}
             placeholder="after 9:30"
           />
         </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
-          <div className="text-[10px] text-[#94A3B8]">ORB LOW</div>
+        <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/30 p-3 rounded-xl">
+          <div className="text-[10px] text-[#a8c0d0]">ORB LOW</div>
           <input
-            className="w-full mt-1 bg-[#070E1C] border border-rose-500/30 rounded px-2 py-1 text-rose-400 font-bold"
+            className="w-full mt-1 bg-[#152a45]/90 border border-rose-500/30 rounded px-2 py-1 text-rose-400 font-bold"
             value={orbLowInput}
             onChange={(e) => setOrbLowInput(e.target.value)}
             placeholder="after 9:30"
           />
         </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
-          <div className="text-[10px] text-[#94A3B8]">45m AUDIT</div>
+        <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/30 p-3 rounded-xl">
+          <div className="text-[10px] text-[#a8c0d0]">45m AUDIT</div>
           <div className="text-sm font-bold mt-1">
             {pendingAudit
               ? `${pendingAudit.signal} · ${Math.max(0, Math.floor((pendingAudit.expiresAt - now) / 60000))}m left`
               : 'Will open next window'}
           </div>
         </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
-          <div className="text-[10px] text-[#94A3B8]">TODAY SCORE (saved)</div>
+        <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/30 p-3 rounded-xl">
+          <div className="text-[10px] text-[#a8c0d0]">TODAY SCORE (saved)</div>
           <div className="text-sm font-bold mt-1 text-emerald-400">
             {hits}H / {misses}M
           </div>
         </div>
       </div>
 
-      <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-2 rounded-xl">
+      <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/40 p-2 rounded-xl">
         <RealTradingViewChart symbol={symbol} height={400} />
       </div>
 
-      <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl overflow-hidden">
-        <div className="p-3 bg-[#111F38] border-b border-[#D4AF37]/20 text-xs font-bold text-[#D4AF37] flex items-center gap-2">
+      <div className="bg-[#1e3a5f]/90 border border-[#c9a227]/40 rounded-xl overflow-hidden">
+        <div className="p-3 bg-[#2a4a6e] border-b border-[#c9a227]/30 text-xs font-bold text-[#e8c547] flex items-center gap-2">
           <AlertTriangle className="w-4 h-4" />
           NEXT 5 / 10 / 15 / 30 MIN — clear CALL or PUT only after ORB break (else WAIT)
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[#D4AF37]/15">
+        <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[#c9a227]/25">
           {(['5m', '10m', '15m', '30m'] as HorizonKey[]).map((hz) => {
             const rule = HORIZON_RULES[hz]
             const mult = symbol === 'BANKNIFTY' ? 2.5 : 1
@@ -768,23 +785,23 @@ export const FoDecisionDesk: React.FC = () => {
                   </span>
                 </div>
                 {lock ? (
-                  <div className="text-[11px] space-y-1 bg-[#070E1C] p-2 rounded border border-[#D4AF37]/30">
+                  <div className="text-[11px] space-y-1 bg-[#152a45]/90 p-2 rounded border border-[#c9a227]/40">
                     <div>LOCKED {lock.direction}</div>
                     <div className="text-emerald-400">T {lock.targetPrice}</div>
                     <div className="text-rose-400">S {lock.stopPrice}</div>
-                    <div className="text-[#64748B]">
+                    <div className="text-[#8aa0b5]">
                       {Math.max(0, Math.floor((lock.expiresAt - now) / 1000))}s
                     </div>
                   </div>
                 ) : (
                   <>
-                    <div className="text-[11px] bg-[#070E1C] p-2 rounded border border-[#D4AF37]/10">
+                    <div className="text-[11px] bg-[#152a45]/90 p-2 rounded border border-[#c9a227]/20">
                       <div className="flex justify-between">
-                        <span className="text-[#94A3B8]">Target</span>
+                        <span className="text-[#a8c0d0]">Target</span>
                         <span className="text-emerald-400">{tgt}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-[#94A3B8]">Stop</span>
+                        <span className="text-[#a8c0d0]">Stop</span>
                         <span className="text-rose-400">{stp}</span>
                       </div>
                     </div>
@@ -792,7 +809,7 @@ export const FoDecisionDesk: React.FC = () => {
                       type="button"
                       disabled={!isBridgeOnline || !liveLtp || signal === 'WAIT'}
                       onClick={() => handleLockHorizon(hz)}
-                      className="w-full py-2 rounded text-xs font-bold bg-[#D4AF37] text-[#070E1C] disabled:bg-[#1E293B] disabled:text-[#64748B] flex items-center justify-center gap-1"
+                      className="w-full py-2 rounded text-xs font-bold bg-[#e8c547] text-[#1a2a1a] disabled:bg-[#1E293B] disabled:text-[#8aa0b5] flex items-center justify-center gap-1"
                     >
                       <Play className="w-3 h-3" /> Lock {hz}
                     </button>
@@ -823,9 +840,9 @@ export const UniversalStockScreener: React.FC = () => {
           }
         }}
       >
-        <Search className="w-4 h-4 absolute left-3 top-3 text-[#D4AF37]" />
+        <Search className="w-4 h-4 absolute left-3 top-3 text-[#e8c547]" />
         <input
-          className="w-full bg-[#0D182E] border border-[#D4AF37]/40 rounded-xl pl-9 pr-4 py-2.5 text-xs"
+          className="w-full bg-[#1e3a5f]/90 border border-[#D4AF37]/40 rounded-xl pl-9 pr-4 py-2.5 text-xs"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="NSE symbol"
@@ -837,27 +854,37 @@ export const UniversalStockScreener: React.FC = () => {
 }
 
 export const InstitutionalFlowsDesk = () => (
-  <div className="p-6 text-xs text-[#94A3B8]">
-    Official EOD:{' '}
-    <a className="text-[#D4AF37] underline" href="https://www.nseindia.com/reports/fii-dii" target="_blank" rel="noreferrer">
+  <div className="p-6 text-xs text-[#a8c0d0]">
+    Treasury note — Official EOD:{' '}
+    <a className="text-[#e8c547] underline" href="https://www.nseindia.com/reports/fii-dii" target="_blank" rel="noreferrer">
       NSE FII/DII
     </a>
   </div>
 )
 export const VisualNewsWireDesk = () => (
-  <div className="h-[480px] rounded-xl overflow-hidden border border-[#D4AF37]/30">
-    <iframe
-      title="news"
-      className="w-full h-full border-0"
-      src="https://s.tradingview.com/embed-widget/timeline/?locale=en#%7B%22feedMode%22%3A%22symbol%22%2C%22symbol%22%3A%22NSE%3ANIFTY%22%2C%22colorTheme%22%3A%22dark%22%2C%22isTransparent%22%3Atrue%2C%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%7D"
-    />
+  <div className="space-y-4 font-mono text-[#f7f0dd]">
+    <h2 className="text-xl font-serif font-bold text-[#e8c547]">Court Calendar · Event Risk</h2>
+    <p className="text-xs text-[#a8c0d0]">Use this instead of noisy news feeds. Mark high-impact days before you size up.</p>
+    <div className="grid gap-3 md:grid-cols-2">
+      {[
+        ['Weekly', 'Nifty / BankNifty expiry — expect wider swings near close'],
+        ['Monthly', 'F&O expiry week — prefer smaller size'],
+        ['Macro', 'RBI policy / CPI / Budget — prefer WAIT into print'],
+        ['Global', 'US Fed week / major US data — watch Gift Nifty gap'],
+      ].map(([t, d]) => (
+        <div key={t} className="rounded-2xl border border-[#c9a227]/40 bg-[#1e3a5f]/90 p-4">
+          <div className="text-[#e8c547] text-xs font-bold uppercase tracking-wider">{t}</div>
+          <p className="text-sm text-[#c5d5e0] mt-1">{d}</p>
+        </div>
+      ))}
+    </div>
   </div>
 )
 export const SectorEtfMatrix = () => (
-  <div className="p-6 text-xs text-[#94A3B8]">Use screener for SILVERBEES / GOLDBEES / ITBEES</div>
+  <div className="p-6 text-xs text-[#a8c0d0]">Use screener for SILVERBEES / GOLDBEES / ITBEES</div>
 )
 export const RiskProtocolDesk = () => (
-  <div className="p-6 text-xs text-[#94A3B8] space-y-2">
+  <div className="p-6 text-xs text-[#a8c0d0] space-y-2">
     <p>1.5% risk max · no lock on WAIT · read MISS reasons on Report Card</p>
   </div>
 )
