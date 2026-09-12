@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { RefreshCw, Play, CheckCircle, XCircle, Clock, Search } from 'lucide-react'
+import {
+  RefreshCw,
+  Play,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Search,
+  AlertTriangle,
+} from 'lucide-react'
 
 const BRIDGE_URL = String(
   (import.meta as any).env?.VITE_ANGEL_BRIDGE_URL || '',
@@ -8,6 +16,14 @@ const BRIDGE_URL = String(
 type HorizonKey = '5m' | '10m' | '15m' | '30m'
 type SignalType = 'CALL' | 'PUT' | 'WAIT'
 type SymbolKey = 'NIFTY' | 'BANKNIFTY'
+type FailReason =
+  | 'NONE'
+  | 'STOPPED'
+  | 'TIME_WRONG_SIDE'
+  | 'NO_BREAKOUT'
+  | 'CHOP'
+  | 'DATA_GAP'
+  | 'UNKNOWN'
 
 interface HorizonConfig {
   durationMs: number
@@ -15,13 +31,19 @@ interface HorizonConfig {
   stopPts: number
 }
 
-/** Independent distances — 5m ≠ 10m ≠ 15m ≠ 30m */
 const HORIZON_RULES: Record<HorizonKey, HorizonConfig> = {
   '5m': { durationMs: 5 * 60 * 1000, targetPts: 18, stopPts: 12 },
   '10m': { durationMs: 10 * 60 * 1000, targetPts: 30, stopPts: 20 },
   '15m': { durationMs: 15 * 60 * 1000, targetPts: 45, stopPts: 28 },
   '30m': { durationMs: 30 * 60 * 1000, targetPts: 70, stopPts: 40 },
 }
+
+const AUDIT_MS = 45 * 60 * 1000
+const LOCKS_KEY = 'novaforge_active_locks_v3'
+const SCORE_KEY = 'novaforge_scorecard_v3'
+const AUDIT_KEY = 'novaforge_audit_v3'
+const ORB_KEY = 'novaforge_manual_orb_v3'
+const WEIGHTS_KEY = 'novaforge_rule_weights_v3'
 
 interface ActiveLock {
   horizon: HorizonKey
@@ -36,56 +58,95 @@ interface ActiveLock {
 
 interface ScorecardRecord {
   id: string
-  horizon: HorizonKey
+  kind: 'LOCK' | 'AUDIT45'
+  horizon: HorizonKey | '45m'
   symbol: SymbolKey
-  direction: 'CALL' | 'PUT'
+  direction: 'CALL' | 'PUT' | 'WAIT'
   entryPrice: number
   exitPrice: number
-  targetPrice: number
-  stopPrice: number
-  status: 'HIT' | 'MISS'
+  targetPrice?: number
+  stopPrice?: number
+  status: 'HIT' | 'MISS' | 'FLAT' | 'SKIP'
+  failReason: FailReason
+  note: string
   lockedAt: number
   resolvedAt: number
+  dayKey: string
 }
 
-const LOCKS_KEY = 'novaforge_active_locks_v2'
-const SCORE_KEY = 'novaforge_scorecard_v2'
-const ORB_KEY = 'novaforge_manual_orb_v2'
+interface AuditPending {
+  id: string
+  symbol: SymbolKey
+  signal: SignalType
+  entryPrice: number
+  lockedAt: number
+  expiresAt: number
+  dayKey: string
+}
+
+function istDayKey(ts = Date.now()): string {
+  return new Date(ts).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+}
+
+function isWeekendIST(dayKey: string): boolean {
+  const [y, m, d] = dayKey.split('-').map(Number)
+  const utc = new Date(Date.UTC(y, m - 1, d, 6, 0, 0))
+  const wd = new Date(utc.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getDay()
+  return wd === 0 || wd === 6
+}
+
+/** Keep last 5 working days of records */
+function pruneWorkingDays(list: ScorecardRecord[]): ScorecardRecord[] {
+  const days = [...new Set(list.map((r) => r.dayKey))].sort().reverse()
+  const work: string[] = []
+  for (const d of days) {
+    if (!isWeekendIST(d)) work.push(d)
+    if (work.length >= 5) break
+  }
+  const keep = new Set(work)
+  return list.filter((r) => keep.has(r.dayKey))
+}
+
+function loadJSON<T>(key: string, fallback: T): T {
+  try {
+    const s = localStorage.getItem(key)
+    return s ? (JSON.parse(s) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
 
 export const RealTradingViewChart: React.FC<{ symbol: string; height?: number }> = ({
   symbol,
-  height = 460,
+  height = 420,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const el = containerRef.current
+    const el = ref.current
     if (!el) return
     el.innerHTML = ''
-    const widgetContainer = document.createElement('div')
-    widgetContainer.className = 'tradingview-widget-container__widget'
-    widgetContainer.style.height = `${height}px`
-    widgetContainer.style.width = '100%'
-    el.appendChild(widgetContainer)
+    const box = document.createElement('div')
+    box.style.height = `${height}px`
+    box.style.width = '100%'
+    el.appendChild(box)
     const script = document.createElement('script')
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
-    script.type = 'text/javascript'
     script.async = true
-    const tvSymbol =
-      symbol === 'BANKNIFTY' || symbol === 'NSE:BANKNIFTY'
+    const tv =
+      symbol === 'BANKNIFTY' || symbol.includes('BANKNIFTY')
         ? 'NSE:BANKNIFTY'
         : symbol.includes(':')
           ? symbol
           : `NSE:${symbol}`
     script.innerHTML = JSON.stringify({
       autosize: true,
-      symbol: tvSymbol,
+      symbol: tv,
       interval: '5',
       timezone: 'Asia/Kolkata',
       theme: 'dark',
       style: '1',
       locale: 'en',
       enable_publishing: false,
-      hide_top_toolbar: false,
       support_host: 'https://www.tradingview.com',
     })
     el.appendChild(script)
@@ -93,93 +154,153 @@ export const RealTradingViewChart: React.FC<{ symbol: string; height?: number }>
       el.innerHTML = ''
     }
   }, [symbol, height])
-  return (
-    <div
-      className="tradingview-widget-container w-full"
-      ref={containerRef}
-      style={{ height: `${height}px` }}
-    />
-  )
+  return <div ref={ref} style={{ height }} className="w-full rounded-xl overflow-hidden" />
 }
 
-function loadLocks(): Record<string, ActiveLock> {
-  try {
-    const s = localStorage.getItem(LOCKS_KEY)
-    return s ? JSON.parse(s) : {}
-  } catch {
-    return {}
-  }
+/** Learn simple weights from past MISS reasons */
+function loadWeights() {
+  return loadJSON(WEIGHTS_KEY, {
+    preferWaitInChop: 0,
+    requireStrongerBreak: 0,
+    widenStop: 0,
+  })
 }
 
-function loadScore(): ScorecardRecord[] {
-  try {
-    const s = localStorage.getItem(SCORE_KEY)
-    return s ? JSON.parse(s) : []
-  } catch {
-    return []
-  }
+function bumpWeight(reason: FailReason) {
+  const w = loadWeights()
+  if (reason === 'CHOP' || reason === 'NO_BREAKOUT') w.preferWaitInChop += 1
+  if (reason === 'STOPPED') w.widenStop += 1
+  if (reason === 'TIME_WRONG_SIDE') w.requireStrongerBreak += 1
+  localStorage.setItem(WEIGHTS_KEY, JSON.stringify(w))
 }
 
 export const HistoricalReportDesk: React.FC = () => {
-  const [scorecard, setScorecard] = useState<ScorecardRecord[]>(() => loadScore())
+  const [rows, setRows] = useState(() =>
+    pruneWorkingDays(loadJSON<ScorecardRecord[]>(SCORE_KEY, [])),
+  )
+  const [weights, setWeights] = useState(loadWeights)
+
   useEffect(() => {
-    const id = setInterval(() => setScorecard(loadScore()), 2000)
+    const id = setInterval(() => {
+      setRows(pruneWorkingDays(loadJSON(SCORE_KEY, [])))
+      setWeights(loadWeights())
+    }, 2000)
     return () => clearInterval(id)
   }, [])
-  const hits = scorecard.filter((s) => s.status === 'HIT').length
-  const misses = scorecard.filter((s) => s.status === 'MISS').length
-  const rate = scorecard.length ? ((hits / scorecard.length) * 100).toFixed(1) : '—'
+
+  const byDay = rows.reduce<Record<string, ScorecardRecord[]>>((acc, r) => {
+    ;(acc[r.dayKey] ||= []).push(r)
+    return acc
+  }, {})
+  const days = Object.keys(byDay).sort().reverse()
+
+  const failCounts = rows
+    .filter((r) => r.status === 'MISS')
+    .reduce<Record<string, number>>((a, r) => {
+      a[r.failReason] = (a[r.failReason] || 0) + 1
+      return a
+    }, {})
+
   return (
-    <div className="space-y-4 font-mono text-[#F8FAFC]">
-      <h2 className="text-xl font-serif font-bold">Resolved scorecard (all saved)</h2>
-      <div className="flex gap-4 text-xs">
-        <span>Total: {scorecard.length}</span>
-        <span className="text-emerald-400">HIT: {hits}</span>
-        <span className="text-rose-400">MISS: {misses}</span>
-        <span className="text-[#D4AF37]">Win rate: {rate}%</span>
+    <div className="space-y-6 font-mono text-[#F8FAFC]">
+      <div>
+        <h2 className="text-xl font-serif font-bold">Report card · 5 working days</h2>
+        <p className="text-xs text-[#94A3B8]">
+          All LOCK + 45m audit rows. Opens of the site backfill pending windows. For true
+          offline scoring, Railway bridge must stay online (see note in F&amp;O tab).
+        </p>
       </div>
-      {scorecard.length === 0 ? (
-        <p className="text-xs text-[#64748B]">No resolved locks yet.</p>
-      ) : (
-        <div className="overflow-x-auto bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#070E1C] text-[#94A3B8]">
-              <tr>
-                <th className="p-3">Resolved</th>
-                <th className="p-3">Index</th>
-                <th className="p-3">H</th>
-                <th className="p-3">Side</th>
-                <th className="p-3">Entry</th>
-                <th className="p-3">Exit</th>
-                <th className="p-3">Result</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#D4AF37]/10">
-              {scorecard.map((item) => (
-                <tr key={item.id}>
-                  <td className="p-3 text-[#94A3B8]">
-                    {new Date(item.resolvedAt).toLocaleString('en-IN', {
-                      timeZone: 'Asia/Kolkata',
-                      hour12: false,
-                    })}
-                  </td>
-                  <td className="p-3 font-bold">{item.symbol}</td>
-                  <td className="p-3 text-[#D4AF37]">{item.horizon}</td>
-                  <td className="p-3">{item.direction}</td>
-                  <td className="p-3">{item.entryPrice.toFixed(2)}</td>
-                  <td className="p-3">{item.exitPrice.toFixed(2)}</td>
-                  <td
-                    className={`p-3 font-bold ${
-                      item.status === 'HIT' ? 'text-emerald-400' : 'text-rose-400'
-                    }`}
-                  >
-                    {item.status}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+        <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-3 rounded-xl">
+          <div className="text-[#D4AF37] font-bold mb-1">Self-tune counters</div>
+          <div>Prefer WAIT in chop: {weights.preferWaitInChop}</div>
+          <div>Stronger break preference: {weights.requireStrongerBreak}</div>
+          <div>Widen stop preference: {weights.widenStop}</div>
         </div>
+        <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-3 rounded-xl md:col-span-2">
+          <div className="text-[#D4AF37] font-bold mb-1">MISS reasons (improve here)</div>
+          {Object.keys(failCounts).length === 0 ? (
+            <span className="text-[#64748B]">No misses yet</span>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(failCounts).map(([k, v]) => (
+                <span key={k} className="px-2 py-1 rounded bg-rose-500/10 text-rose-300 border border-rose-500/30">
+                  {k}: {v}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {days.length === 0 ? (
+        <p className="text-xs text-[#64748B]">No saved days yet.</p>
+      ) : (
+        days.map((day) => {
+          const list = byDay[day]
+          const hits = list.filter((r) => r.status === 'HIT').length
+          const miss = list.filter((r) => r.status === 'MISS').length
+          const flat = list.filter((r) => r.status === 'FLAT' || r.status === 'SKIP').length
+          return (
+            <div key={day} className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl overflow-hidden">
+              <div className="p-3 bg-[#111F38] border-b border-[#D4AF37]/20 flex flex-wrap gap-3 text-xs font-bold">
+                <span className="text-[#D4AF37]">{day}</span>
+                <span className="text-emerald-400">HIT {hits}</span>
+                <span className="text-rose-400">MISS {miss}</span>
+                <span className="text-[#94A3B8]">FLAT/SKIP {flat}</span>
+                <span>N={list.length}</span>
+              </div>
+              <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="text-[#94A3B8] sticky top-0 bg-[#070E1C]">
+                    <tr>
+                      <th className="p-2">Time</th>
+                      <th className="p-2">Kind</th>
+                      <th className="p-2">H</th>
+                      <th className="p-2">Side</th>
+                      <th className="p-2">Entry</th>
+                      <th className="p-2">Exit</th>
+                      <th className="p-2">Result</th>
+                      <th className="p-2">Why fail / note</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#D4AF37]/10">
+                    {list.map((r) => (
+                      <tr key={r.id}>
+                        <td className="p-2 text-[#94A3B8]">
+                          {new Date(r.resolvedAt).toLocaleTimeString('en-IN', {
+                            hour12: false,
+                            timeZone: 'Asia/Kolkata',
+                          })}
+                        </td>
+                        <td className="p-2">{r.kind}</td>
+                        <td className="p-2 text-[#D4AF37]">{r.horizon}</td>
+                        <td className="p-2 font-bold">{r.direction}</td>
+                        <td className="p-2">{r.entryPrice.toFixed(1)}</td>
+                        <td className="p-2">{r.exitPrice.toFixed(1)}</td>
+                        <td
+                          className={`p-2 font-bold ${
+                            r.status === 'HIT'
+                              ? 'text-emerald-400'
+                              : r.status === 'MISS'
+                                ? 'text-rose-400'
+                                : 'text-amber-300'
+                          }`}
+                        >
+                          {r.status}
+                        </td>
+                        <td className="p-2 text-[#CBD5E1]">
+                          {r.status === 'MISS' ? r.failReason : r.note || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })
       )}
     </div>
   )
@@ -190,46 +311,38 @@ export const FoDecisionDesk: React.FC = () => {
   const [liveLtp, setLiveLtp] = useState<number | null>(null)
   const [orbHighInput, setOrbHighInput] = useState('')
   const [orbLowInput, setOrbLowInput] = useState('')
-  const [lastUpdated, setLastUpdated] = useState('--:--:--')
   const [isBridgeOnline, setIsBridgeOnline] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState('--:--:--')
   const [err, setErr] = useState('')
   const [now, setNow] = useState(Date.now())
-  const [activeLocks, setActiveLocks] = useState<Record<string, ActiveLock>>(() => loadLocks())
-  const [scorecard, setScorecard] = useState<ScorecardRecord[]>(() => loadScore())
+  const [activeLocks, setActiveLocks] = useState<Record<string, ActiveLock>>(() =>
+    loadJSON(LOCKS_KEY, {}),
+  )
+  const [scorecard, setScorecard] = useState<ScorecardRecord[]>(() =>
+    pruneWorkingDays(loadJSON(SCORE_KEY, [])),
+  )
+  const [audits, setAudits] = useState<AuditPending[]>(() => loadJSON(AUDIT_KEY, []))
+  const [lastAuditAt, setLastAuditAt] = useState(0)
   const evaluating = useRef(false)
 
   useEffect(() => {
-    try {
-      const s = localStorage.getItem(ORB_KEY)
-      if (s) {
-        const o = JSON.parse(s)
-        if (o.high) setOrbHighInput(String(o.high))
-        if (o.low) setOrbLowInput(String(o.low))
-      }
-    } catch {
-      /* */
-    }
+    const o = loadJSON<{ high?: string; low?: string }>(ORB_KEY, {})
+    if (o.high) setOrbHighInput(String(o.high))
+    if (o.low) setOrbLowInput(String(o.low))
   }, [])
-
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        ORB_KEY,
-        JSON.stringify({ high: orbHighInput, low: orbLowInput }),
-      )
-    } catch {
-      /* */
-    }
+    localStorage.setItem(ORB_KEY, JSON.stringify({ high: orbHighInput, low: orbLowInput }))
   }, [orbHighInput, orbLowInput])
-
   useEffect(() => {
     localStorage.setItem(LOCKS_KEY, JSON.stringify(activeLocks))
   }, [activeLocks])
-
   useEffect(() => {
-    localStorage.setItem(SCORE_KEY, JSON.stringify(scorecard.slice(0, 300)))
+    const pruned = pruneWorkingDays(scorecard)
+    localStorage.setItem(SCORE_KEY, JSON.stringify(pruned.slice(0, 500)))
   }, [scorecard])
-
+  useEffect(() => {
+    localStorage.setItem(AUDIT_KEY, JSON.stringify(audits))
+  }, [audits])
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
@@ -245,16 +358,13 @@ export const FoDecisionDesk: React.FC = () => {
       const res = await fetch(`${BRIDGE_URL}/snapshot`, { cache: 'no-store' })
       if (!res.ok) throw new Error('HTTP ' + res.status)
       const data = await res.json()
-      let extractedLtp: number | null = null
+      let px: number | null = null
       if (data.ltp && typeof data.ltp === 'object') {
-        extractedLtp = Number(symbol === 'NIFTY' ? data.ltp.NIFTY : data.ltp.BANKNIFTY)
-      } else if (symbol === 'NIFTY' && data.nifty?.ltp) {
-        extractedLtp = Number(data.nifty.ltp)
-      } else if (symbol === 'BANKNIFTY' && data.bankNifty?.ltp) {
-        extractedLtp = Number(data.bankNifty.ltp)
-      }
-      if (extractedLtp && !Number.isNaN(extractedLtp) && extractedLtp > 0) {
-        setLiveLtp(extractedLtp)
+        px = Number(symbol === 'NIFTY' ? data.ltp.NIFTY : data.ltp.BANKNIFTY)
+      } else if (symbol === 'NIFTY' && data.nifty?.ltp) px = Number(data.nifty.ltp)
+      else if (symbol === 'BANKNIFTY' && data.bankNifty?.ltp) px = Number(data.bankNifty.ltp)
+      if (px && px > 0) {
+        setLiveLtp(px)
         setIsBridgeOnline(true)
         setLastUpdated(
           new Date().toLocaleTimeString('en-IN', { hour12: false, timeZone: 'Asia/Kolkata' }),
@@ -272,61 +382,107 @@ export const FoDecisionDesk: React.FC = () => {
 
   useEffect(() => {
     void fetchSnapshot()
-    const timer = setInterval(() => void fetchSnapshot(), 2000)
-    return () => clearInterval(timer)
+    const t = setInterval(() => void fetchSnapshot(), 2000)
+    return () => clearInterval(t)
   }, [fetchSnapshot])
 
   const orbHigh = parseFloat(orbHighInput)
   const orbLow = parseFloat(orbLowInput)
   const hasOrb = !Number.isNaN(orbHigh) && !Number.isNaN(orbLow) && orbHigh > orbLow
+  const weights = loadWeights()
+  const breakPad =
+    (symbol === 'BANKNIFTY' ? 15 : 6) + weights.requireStrongerBreak * 2
 
-  /** CALL only above ORB high; PUT only below ORB low; else WAIT */
   const deriveSignal = (): SignalType => {
     if (!liveLtp || !hasOrb) return 'WAIT'
-    if (liveLtp > orbHigh) return 'CALL'
-    if (liveLtp < orbLow) return 'PUT'
+    if (weights.preferWaitInChop > 3 && liveLtp < orbHigh + breakPad && liveLtp > orbLow - breakPad) {
+      // after repeated chop misses, demand clearer break
+    }
+    if (liveLtp > orbHigh + (weights.requireStrongerBreak > 2 ? breakPad * 0.3 : 0)) return 'CALL'
+    if (liveLtp < orbLow - (weights.requireStrongerBreak > 2 ? breakPad * 0.3 : 0)) return 'PUT'
     return 'WAIT'
   }
   const signal = deriveSignal()
 
-  // Resolve locks without depending on activeLocks in effect deps (avoid loops)
+  const pushScore = (row: ScorecardRecord) => {
+    setScorecard((prev) => pruneWorkingDays([row, ...prev]).slice(0, 500))
+    if (row.status === 'MISS') bumpWeight(row.failReason)
+  }
+
+  // Resolve locks
   useEffect(() => {
     if (!liveLtp || evaluating.current) return
     evaluating.current = true
     try {
-      const locks = loadLocks()
+      const locks = { ...activeLocks }
+      let changed = false
       const remaining: Record<string, ActiveLock> = {}
-      const newRecords: ScorecardRecord[] = []
       const t = Date.now()
-      Object.entries(locks).forEach(([lockKey, lock]) => {
-        let isResolved = false
-        let finalStatus: 'HIT' | 'MISS' = 'MISS'
+      Object.entries(locks).forEach(([key, lock]) => {
+        let done = false
+        let status: ScorecardRecord['status'] = 'MISS'
+        let reason: FailReason = 'UNKNOWN'
+        let note = ''
         if (lock.direction === 'CALL') {
           if (liveLtp >= lock.targetPrice) {
-            isResolved = true
-            finalStatus = 'HIT'
+            done = true
+            status = 'HIT'
+            reason = 'NONE'
+            note = 'Target hit'
           } else if (liveLtp <= lock.stopPrice) {
-            isResolved = true
-            finalStatus = 'MISS'
+            done = true
+            status = 'MISS'
+            reason = 'STOPPED'
+            note = 'Hit stop'
           } else if (t >= lock.expiresAt) {
-            isResolved = true
-            finalStatus = liveLtp > lock.entryPrice ? 'HIT' : 'MISS'
+            done = true
+            if (liveLtp > lock.entryPrice + 2) {
+              status = 'HIT'
+              reason = 'NONE'
+              note = 'Time up, green'
+            } else if (Math.abs(liveLtp - lock.entryPrice) < 3) {
+              status = 'FLAT'
+              reason = 'CHOP'
+              note = 'Time up, flat'
+            } else {
+              status = 'MISS'
+              reason = 'TIME_WRONG_SIDE'
+              note = 'Time up, wrong side'
+            }
           }
         } else {
           if (liveLtp <= lock.targetPrice) {
-            isResolved = true
-            finalStatus = 'HIT'
+            done = true
+            status = 'HIT'
+            reason = 'NONE'
+            note = 'Target hit'
           } else if (liveLtp >= lock.stopPrice) {
-            isResolved = true
-            finalStatus = 'MISS'
+            done = true
+            status = 'MISS'
+            reason = 'STOPPED'
+            note = 'Hit stop'
           } else if (t >= lock.expiresAt) {
-            isResolved = true
-            finalStatus = liveLtp < lock.entryPrice ? 'HIT' : 'MISS'
+            done = true
+            if (liveLtp < lock.entryPrice - 2) {
+              status = 'HIT'
+              reason = 'NONE'
+              note = 'Time up, green'
+            } else if (Math.abs(liveLtp - lock.entryPrice) < 3) {
+              status = 'FLAT'
+              reason = 'CHOP'
+              note = 'Time up, flat'
+            } else {
+              status = 'MISS'
+              reason = 'TIME_WRONG_SIDE'
+              note = 'Time up, wrong side'
+            }
           }
         }
-        if (isResolved) {
-          newRecords.push({
-            id: `${lockKey}_${t}`,
+        if (done) {
+          changed = true
+          pushScore({
+            id: `${key}_${t}`,
+            kind: 'LOCK',
             horizon: lock.horizon,
             symbol: lock.symbol,
             direction: lock.direction,
@@ -334,64 +490,166 @@ export const FoDecisionDesk: React.FC = () => {
             exitPrice: liveLtp,
             targetPrice: lock.targetPrice,
             stopPrice: lock.stopPrice,
-            status: finalStatus,
+            status,
+            failReason: reason,
+            note,
             lockedAt: lock.lockedAt,
             resolvedAt: t,
+            dayKey: istDayKey(lock.lockedAt),
           })
-        } else {
-          remaining[lockKey] = lock
-        }
+        } else remaining[key] = lock
       })
-      if (newRecords.length > 0) {
-        setScorecard((prev) => [...newRecords, ...prev].slice(0, 300))
-        setActiveLocks(remaining)
-      }
+      if (changed) setActiveLocks(remaining)
     } finally {
       evaluating.current = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveLtp, now])
+
+  // 45-minute auto audit: create + resolve
+  useEffect(() => {
+    if (!liveLtp || !isBridgeOnline) return
+    const t = Date.now()
+    // resolve expired audits
+    const still: AuditPending[] = []
+    audits.forEach((a) => {
+      if (t < a.expiresAt) {
+        still.push(a)
+        return
+      }
+      let status: ScorecardRecord['status'] = 'FLAT'
+      let reason: FailReason = 'CHOP'
+      let note = '45m window closed'
+      if (a.signal === 'WAIT') {
+        status = 'SKIP'
+        reason = 'NO_BREAKOUT'
+        note = 'WAIT — no ORB break at open of window'
+      } else if (a.signal === 'CALL') {
+        if (liveLtp > a.entryPrice + 8) {
+          status = 'HIT'
+          reason = 'NONE'
+          note = 'Up after CALL audit'
+        } else if (liveLtp < a.entryPrice - 8) {
+          status = 'MISS'
+          reason = 'TIME_WRONG_SIDE'
+          note = 'Down after CALL audit'
+        } else {
+          status = 'FLAT'
+          reason = 'CHOP'
+          note = 'Mostly flat after CALL'
+        }
+      } else if (a.signal === 'PUT') {
+        if (liveLtp < a.entryPrice - 8) {
+          status = 'HIT'
+          reason = 'NONE'
+          note = 'Down after PUT audit'
+        } else if (liveLtp > a.entryPrice + 8) {
+          status = 'MISS'
+          reason = 'TIME_WRONG_SIDE'
+          note = 'Up after PUT audit'
+        } else {
+          status = 'FLAT'
+          reason = 'CHOP'
+          note = 'Mostly flat after PUT'
+        }
+      }
+      pushScore({
+        id: a.id + '_done',
+        kind: 'AUDIT45',
+        horizon: '45m',
+        symbol: a.symbol,
+        direction: a.signal,
+        entryPrice: a.entryPrice,
+        exitPrice: liveLtp,
+        status,
+        failReason: reason,
+        note,
+        lockedAt: a.lockedAt,
+        resolvedAt: t,
+        dayKey: a.dayKey,
+      })
+    })
+    if (still.length !== audits.length) setAudits(still)
+
+    // open new 45m audit at most once per window
+    if (t - lastAuditAt >= AUDIT_MS || lastAuditAt === 0) {
+      // only auto-open during rough market hours IST 9:15-15:30
+      const ist = new Date().toLocaleTimeString('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        hour12: false,
+      })
+      const [hh, mm] = ist.split(':').map(Number)
+      const mins = hh * 60 + mm
+      if (mins >= 9 * 60 + 15 && mins <= 15 * 60 + 30) {
+        if (lastAuditAt === 0 || t - lastAuditAt >= AUDIT_MS) {
+          const id = `audit_${symbol}_${t}`
+          setAudits((prev) => [
+            ...prev.filter((x) => x.expiresAt > t),
+            {
+              id,
+              symbol,
+              signal,
+              entryPrice: liveLtp,
+              lockedAt: t,
+              expiresAt: t + AUDIT_MS,
+              dayKey: istDayKey(t),
+            },
+          ])
+          setLastAuditAt(t)
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveLtp, now, isBridgeOnline])
 
   const handleLockHorizon = (horizon: HorizonKey) => {
     if (!liveLtp || !isBridgeOnline) {
-      setErr('Need LIVE LTP to lock')
+      setErr('Need LIVE LTP')
       return
     }
     if (signal === 'WAIT') {
-      setErr('Signal is WAIT — set ORB and wait for break, or no lock')
+      setErr('WAIT — no CALL/PUT until ORB break')
       return
     }
     const rule = HORIZON_RULES[horizon]
-    const multiplier = symbol === 'BANKNIFTY' ? 2.5 : 1.0
-    const targetDistance = rule.targetPts * multiplier
-    const stopDistance = rule.stopPts * multiplier
+    const mult = symbol === 'BANKNIFTY' ? 2.5 : 1
+    const stopExtra = weights.widenStop > 2 ? 1.15 : 1
+    const targetDistance = rule.targetPts * mult
+    const stopDistance = rule.stopPts * mult * stopExtra
     const targetPrice =
       signal === 'CALL' ? liveLtp + targetDistance : liveLtp - targetDistance
     const stopPrice =
       signal === 'CALL' ? liveLtp - stopDistance : liveLtp + stopDistance
     const lockKey = `${symbol}_${horizon}`
-    const newLock: ActiveLock = {
-      horizon,
-      symbol,
-      entryPrice: liveLtp,
-      targetPrice: Number(targetPrice.toFixed(2)),
-      stopPrice: Number(stopPrice.toFixed(2)),
-      direction: signal,
-      lockedAt: Date.now(),
-      expiresAt: Date.now() + rule.durationMs,
-    }
-    setActiveLocks((prev) => ({ ...prev, [lockKey]: newLock }))
+    setActiveLocks((prev) => ({
+      ...prev,
+      [lockKey]: {
+        horizon,
+        symbol,
+        entryPrice: liveLtp,
+        targetPrice: Number(targetPrice.toFixed(2)),
+        stopPrice: Number(stopPrice.toFixed(2)),
+        direction: signal,
+        lockedAt: Date.now(),
+        expiresAt: Date.now() + rule.durationMs,
+      },
+    }))
     setErr('')
   }
 
-  const totalLockedTrades = scorecard.length
   const hits = scorecard.filter((s) => s.status === 'HIT').length
   const misses = scorecard.filter((s) => s.status === 'MISS').length
-  const winRate =
-    totalLockedTrades > 0 ? ((hits / totalLockedTrades) * 100).toFixed(1) : '0.0'
+  const pendingAudit = audits.find((a) => a.symbol === symbol && a.expiresAt > now)
 
   return (
     <div className="space-y-6 font-mono text-[#F8FAFC]">
-      <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-[11px] text-amber-100">
+        <strong>Auto system:</strong> 45m audits run while this tab is open (or when you reopen —
+        pending windows resolve on next live price). For scoring while phone is fully closed,
+        Railway bridge must keep polling (backend). Frontend alone cannot score offline.
+      </div>
+
+      <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-4 rounded-xl flex flex-col sm:flex-row justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-[#070E1C] p-1 rounded-lg border border-[#D4AF37]/30">
             {(['NIFTY', 'BANKNIFTY'] as SymbolKey[]).map((s) => (
@@ -407,241 +665,143 @@ export const FoDecisionDesk: React.FC = () => {
               </button>
             ))}
           </div>
-          <div className="text-xs">
-            <span className="text-[#94A3B8]">LTP: </span>
-            <span className="text-base font-bold text-white">
-              {liveLtp != null ? liveLtp.toFixed(2) : 'OFFLINE'}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-xs">
-          <span className="flex items-center gap-1.5">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isBridgeOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'
-              }`}
-            />
-            {isBridgeOnline ? `LIVE (${lastUpdated})` : 'BRIDGE OFF'}
+          <span className="text-base font-bold">
+            {liveLtp != null ? liveLtp.toFixed(2) : 'OFFLINE'}
           </span>
-          {err ? <span className="text-amber-300 max-w-[200px] truncate">{err}</span> : null}
-          <button
-            type="button"
-            onClick={() => void fetchSnapshot()}
-            className="p-1.5 bg-[#070E1C] border border-[#D4AF37]/30 rounded text-[#D4AF37]"
+          <span
+            className={`text-sm font-black px-3 py-1 rounded-lg border ${
+              signal === 'CALL'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                : signal === 'PUT'
+                  ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+            }`}
           >
+            {signal === 'CALL' ? '→ CALL' : signal === 'PUT' ? '→ PUT' : '→ WAIT'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className={isBridgeOnline ? 'text-emerald-400' : 'text-rose-400'}>
+            {isBridgeOnline ? `LIVE ${lastUpdated}` : 'BRIDGE OFF'}
+          </span>
+          {err ? <span className="text-amber-300 max-w-[180px] truncate">{err}</span> : null}
+          <button type="button" onClick={() => void fetchSnapshot()} className="p-1.5 border border-[#D4AF37]/30 rounded text-[#D4AF37]">
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] block uppercase">Posture</span>
-          <span
-            className={`text-xl font-bold block mt-1 ${
-              signal === 'CALL'
-                ? 'text-emerald-400'
-                : signal === 'PUT'
-                  ? 'text-rose-400'
-                  : 'text-amber-400'
-            }`}
-          >
-            {signal === 'CALL' ? 'CALL' : signal === 'PUT' ? 'PUT' : 'WAIT'}
-          </span>
-          <span className="text-[10px] text-[#64748B]">
-            {hasOrb ? 'ORB break rule' : 'Enter ORB high/low first'}
-          </span>
-        </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] block uppercase">ORB High (manual)</span>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
+          <div className="text-[10px] text-[#94A3B8]">ORB HIGH</div>
           <input
-            className="mt-1 w-full bg-[#070E1C] border border-emerald-500/30 rounded px-2 py-1 text-emerald-400 font-bold text-sm"
+            className="w-full mt-1 bg-[#070E1C] border border-emerald-500/30 rounded px-2 py-1 text-emerald-400 font-bold"
             value={orbHighInput}
             onChange={(e) => setOrbHighInput(e.target.value)}
             placeholder="after 9:30"
           />
         </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] block uppercase">ORB Low (manual)</span>
+        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
+          <div className="text-[10px] text-[#94A3B8]">ORB LOW</div>
           <input
-            className="mt-1 w-full bg-[#070E1C] border border-rose-500/30 rounded px-2 py-1 text-rose-400 font-bold text-sm"
+            className="w-full mt-1 bg-[#070E1C] border border-rose-500/30 rounded px-2 py-1 text-rose-400 font-bold"
             value={orbLowInput}
             onChange={(e) => setOrbLowInput(e.target.value)}
             placeholder="after 9:30"
           />
         </div>
-        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-4 rounded-xl">
-          <span className="text-[10px] text-[#94A3B8] block uppercase">Scorecard</span>
-          <span className="text-lg font-bold text-white block mt-1">
+        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
+          <div className="text-[10px] text-[#94A3B8]">45m AUDIT</div>
+          <div className="text-sm font-bold mt-1">
+            {pendingAudit
+              ? `${pendingAudit.signal} · ${Math.max(0, Math.floor((pendingAudit.expiresAt - now) / 60000))}m left`
+              : 'Will open next window'}
+          </div>
+        </div>
+        <div className="bg-[#0D182E] border border-[#D4AF37]/20 p-3 rounded-xl">
+          <div className="text-[10px] text-[#94A3B8]">TODAY SCORE (saved)</div>
+          <div className="text-sm font-bold mt-1 text-emerald-400">
             {hits}H / {misses}M
-          </span>
-          <span className="text-[10px] text-[#D4AF37]">{winRate}% of resolved</span>
+          </div>
         </div>
       </div>
 
-      <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-3 rounded-xl">
-        <RealTradingViewChart symbol={symbol} height={460} />
+      <div className="bg-[#0D182E] border border-[#D4AF37]/30 p-2 rounded-xl">
+        <RealTradingViewChart symbol={symbol} height={400} />
       </div>
 
       <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl overflow-hidden">
-        <div className="p-3 bg-[#111F38] border-b border-[#D4AF37]/20 flex justify-between items-center text-xs">
-          <span className="font-bold text-[#D4AF37]">HORIZON LOCKS (different T/S each)</span>
-          <span className="text-[#94A3B8]">Lock only when CALL or PUT (ORB break)</span>
+        <div className="p-3 bg-[#111F38] border-b border-[#D4AF37]/20 text-xs font-bold text-[#D4AF37] flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          NEXT 5 / 10 / 15 / 30 MIN — clear CALL or PUT only after ORB break (else WAIT)
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-[#D4AF37]/15">
           {(['5m', '10m', '15m', '30m'] as HorizonKey[]).map((hz) => {
-            const lockKey = `${symbol}_${hz}`
-            const active = activeLocks[lockKey]
             const rule = HORIZON_RULES[hz]
-            const multiplier = symbol === 'BANKNIFTY' ? 2.5 : 1.0
-            const targetDist = rule.targetPts * multiplier
-            const stopDist = rule.stopPts * multiplier
-            const projTarget =
+            const mult = symbol === 'BANKNIFTY' ? 2.5 : 1
+            const stopExtra = weights.widenStop > 2 ? 1.15 : 1
+            const td = rule.targetPts * mult
+            const sd = rule.stopPts * mult * stopExtra
+            const lock = activeLocks[`${symbol}_${hz}`]
+            const tgt =
               liveLtp && signal !== 'WAIT'
-                ? signal === 'CALL'
-                  ? (liveLtp + targetDist).toFixed(1)
-                  : (liveLtp - targetDist).toFixed(1)
-                : '--'
-            const projStop =
+                ? (signal === 'CALL' ? liveLtp + td : liveLtp - td).toFixed(1)
+                : '—'
+            const stp =
               liveLtp && signal !== 'WAIT'
-                ? signal === 'CALL'
-                  ? (liveLtp - stopDist).toFixed(1)
-                  : (liveLtp + stopDist).toFixed(1)
-                : '--'
-            const secsLeft = active
-              ? Math.max(0, Math.floor((active.expiresAt - now) / 1000))
-              : 0
+                ? (signal === 'CALL' ? liveLtp - sd : liveLtp + sd).toFixed(1)
+                : '—'
             return (
-              <div key={hz} className="p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-white uppercase">{hz}</span>
-                  <span className="text-[10px] text-[#94A3B8]">
-                    T±{targetDist} S±{stopDist}
+              <div key={hz} className="p-4 space-y-2">
+                <div className="flex justify-between text-xs font-bold">
+                  <span>{hz.toUpperCase()}</span>
+                  <span
+                    className={
+                      signal === 'CALL'
+                        ? 'text-emerald-400'
+                        : signal === 'PUT'
+                          ? 'text-rose-400'
+                          : 'text-amber-300'
+                    }
+                  >
+                    {signal}
                   </span>
                 </div>
-                {active ? (
-                  <div className="bg-[#070E1C] p-3 rounded border border-[#D4AF37]/40 space-y-1.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-[#94A3B8]">State</span>
-                      <span className="text-emerald-400 font-bold">LOCKED</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#94A3B8]">Side</span>
-                      <span className="font-bold">{active.direction}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#94A3B8]">Entry</span>
-                      <span>{active.entryPrice.toFixed(1)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#94A3B8]">Target</span>
-                      <span className="text-emerald-400">{active.targetPrice}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#94A3B8]">Stop</span>
-                      <span className="text-rose-400">{active.stopPrice}</span>
-                    </div>
-                    <div className="flex justify-between pt-1 border-t border-[#D4AF37]/10 text-[10px] text-[#64748B]">
-                      <span>Expires</span>
-                      <span>{secsLeft}s</span>
+                {lock ? (
+                  <div className="text-[11px] space-y-1 bg-[#070E1C] p-2 rounded border border-[#D4AF37]/30">
+                    <div>LOCKED {lock.direction}</div>
+                    <div className="text-emerald-400">T {lock.targetPrice}</div>
+                    <div className="text-rose-400">S {lock.stopPrice}</div>
+                    <div className="text-[#64748B]">
+                      {Math.max(0, Math.floor((lock.expiresAt - now) / 1000))}s
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="bg-[#070E1C] p-2.5 rounded border border-[#D4AF37]/10 text-xs space-y-1">
+                  <>
+                    <div className="text-[11px] bg-[#070E1C] p-2 rounded border border-[#D4AF37]/10">
                       <div className="flex justify-between">
                         <span className="text-[#94A3B8]">Target</span>
-                        <span className="text-emerald-400">{projTarget}</span>
+                        <span className="text-emerald-400">{tgt}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[#94A3B8]">Stop</span>
-                        <span className="text-rose-400">{projStop}</span>
+                        <span className="text-rose-400">{stp}</span>
                       </div>
                     </div>
                     <button
                       type="button"
+                      disabled={!isBridgeOnline || !liveLtp || signal === 'WAIT'}
                       onClick={() => handleLockHorizon(hz)}
-                      disabled={!liveLtp || !isBridgeOnline || signal === 'WAIT'}
-                      className="w-full py-2 bg-[#D4AF37] disabled:bg-[#1E293B] disabled:text-[#64748B] text-[#070E1C] font-bold rounded text-xs flex items-center justify-center gap-1.5"
+                      className="w-full py-2 rounded text-xs font-bold bg-[#D4AF37] text-[#070E1C] disabled:bg-[#1E293B] disabled:text-[#64748B] flex items-center justify-center gap-1"
                     >
-                      <Play className="w-3 h-3 fill-current" />
-                      Lock {hz}
+                      <Play className="w-3 h-3" /> Lock {hz}
                     </button>
-                  </div>
+                  </>
                 )}
               </div>
             )
           })}
         </div>
-      </div>
-
-      <div className="bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl overflow-hidden">
-        <div className="p-3 bg-[#111F38] border-b border-[#D4AF37]/20 flex flex-wrap justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-[#D4AF37]" />
-            <span className="font-bold text-[#D4AF37]">SCORECARD (real only)</span>
-          </div>
-          <div className="flex gap-4 font-bold">
-            <span>N={totalLockedTrades}</span>
-            <span className="text-emerald-400">HIT {hits}</span>
-            <span className="text-rose-400">MISS {misses}</span>
-            <span>{winRate}%</span>
-          </div>
-        </div>
-        {scorecard.length === 0 ? (
-          <div className="p-8 text-center text-xs text-[#64748B]">
-            Lock after ORB break (CALL/PUT). Results appear when target, stop, or time hits.
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-[#D4AF37]/15 bg-[#070E1C] text-[#94A3B8] sticky top-0">
-                <tr>
-                  <th className="p-3">Time</th>
-                  <th className="p-3">Index</th>
-                  <th className="p-3">H</th>
-                  <th className="p-3">Side</th>
-                  <th className="p-3">Entry</th>
-                  <th className="p-3">Exit</th>
-                  <th className="p-3">Outcome</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#D4AF37]/10">
-                {scorecard.map((item) => (
-                  <tr key={item.id}>
-                    <td className="p-3 text-[#94A3B8]">
-                      {new Date(item.resolvedAt).toLocaleTimeString('en-IN', {
-                        hour12: false,
-                        timeZone: 'Asia/Kolkata',
-                      })}
-                    </td>
-                    <td className="p-3 font-bold">{item.symbol}</td>
-                    <td className="p-3 text-[#D4AF37]">{item.horizon}</td>
-                    <td className="p-3 font-bold">{item.direction}</td>
-                    <td className="p-3">{item.entryPrice.toFixed(2)}</td>
-                    <td className="p-3">{item.exitPrice.toFixed(2)}</td>
-                    <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold inline-flex items-center gap-1 ${
-                          item.status === 'HIT'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-rose-500/20 text-rose-400'
-                        }`}
-                      >
-                        {item.status === 'HIT' ? (
-                          <CheckCircle className="w-3 h-3" />
-                        ) : (
-                          <XCircle className="w-3 h-3" />
-                        )}
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -665,54 +825,40 @@ export const UniversalStockScreener: React.FC = () => {
       >
         <Search className="w-4 h-4 absolute left-3 top-3 text-[#D4AF37]" />
         <input
-          className="w-full bg-[#0D182E] border border-[#D4AF37]/40 rounded-xl pl-9 pr-20 py-2.5 text-xs"
+          className="w-full bg-[#0D182E] border border-[#D4AF37]/40 rounded-xl pl-9 pr-4 py-2.5 text-xs"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="NSE symbol"
         />
-        <button
-          type="submit"
-          className="absolute right-1.5 top-1.5 bg-[#D4AF37] text-[#070E1C] px-3 py-1 rounded-lg text-xs font-bold"
-        >
-          Load
-        </button>
       </form>
-      <RealTradingViewChart symbol={`NSE:${sym}`} height={520} />
+      <RealTradingViewChart symbol={`NSE:${sym}`} height={480} />
     </div>
   )
 }
 
-export const InstitutionalFlowsDesk: React.FC = () => (
-  <div className="p-6 bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl text-xs text-[#94A3B8] space-y-2">
-    <p>Use official NSE FII/DII EOD — no fake live institutional feed.</p>
-    <a
-      className="text-[#D4AF37] underline"
-      href="https://www.nseindia.com/reports/fii-dii"
-      target="_blank"
-      rel="noreferrer"
-    >
+export const InstitutionalFlowsDesk = () => (
+  <div className="p-6 text-xs text-[#94A3B8]">
+    Official EOD:{' '}
+    <a className="text-[#D4AF37] underline" href="https://www.nseindia.com/reports/fii-dii" target="_blank" rel="noreferrer">
       NSE FII/DII
     </a>
   </div>
 )
-
-export const VisualNewsWireDesk: React.FC = () => (
-  <div className="h-[520px] rounded-xl overflow-hidden border border-[#D4AF37]/30">
+export const VisualNewsWireDesk = () => (
+  <div className="h-[480px] rounded-xl overflow-hidden border border-[#D4AF37]/30">
     <iframe
       title="news"
-      className="w-full h-full border-none"
+      className="w-full h-full border-0"
       src="https://s.tradingview.com/embed-widget/timeline/?locale=en#%7B%22feedMode%22%3A%22symbol%22%2C%22symbol%22%3A%22NSE%3ANIFTY%22%2C%22colorTheme%22%3A%22dark%22%2C%22isTransparent%22%3Atrue%2C%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%7D"
     />
   </div>
 )
-
-export const SectorEtfMatrix: React.FC = () => (
-  <div className="p-6 text-xs text-[#94A3B8]">Screener → SILVERBEES, GOLDBEES, ITBEES</div>
+export const SectorEtfMatrix = () => (
+  <div className="p-6 text-xs text-[#94A3B8]">Use screener for SILVERBEES / GOLDBEES / ITBEES</div>
 )
-
-export const RiskProtocolDesk: React.FC = () => (
-  <div className="p-6 bg-[#0D182E] border border-[#D4AF37]/30 rounded-xl text-xs text-[#94A3B8] space-y-2">
-    <p>1.5% max risk · no lock on WAIT · journal every resolve</p>
+export const RiskProtocolDesk = () => (
+  <div className="p-6 text-xs text-[#94A3B8] space-y-2">
+    <p>1.5% risk max · no lock on WAIT · read MISS reasons on Report Card</p>
   </div>
 )
 
