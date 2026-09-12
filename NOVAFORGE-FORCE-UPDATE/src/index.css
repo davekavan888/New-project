@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+html, body, #root {
+  min-height: 100%;
+}
+body {
+  margin: 0;
+  background: linear-gradient(165deg, #f0f9ff 0%, #ffffff 45%, #ecfdf5 100%);
+  color: #0f172a;
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+}

@@ -1,0 +1,20 @@
+FORCE UPDATE — replace these paths on GitHub (same names):
+
+MUST REPLACE (overwrite):
+  index.html
+  src/main.tsx          ← this kills old SiteGate / dark shell
+  src/App.tsx
+  src/index.css
+  src/pages/ExtraPages.tsx
+
+After commit, Vercel redeploys automatically.
+Hard refresh: Ctrl+Shift+R
+
+You should see:
+  - Light sky / white / gold / green (not black)
+  - Sidebar: "Trade Desk + Locks" and "Report Card Archive"
+  - Big LOCK buttons for 5m 10m 15m 30m
+
+If still dark "Trajectory Matrix":
+  - Wrong GitHub repo connected to Vercel
+  - Or files put in nested folder (must be src/App.tsx at repo root src/)
