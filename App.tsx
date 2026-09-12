@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import {
   Search,
-  Newspaper,
-  Globe,
   Landmark,
   ShieldAlert,
-  Atom,
+  CandlestickChart,
   User,
   Lock,
   History,
   Download,
+  Trees,
+  ScrollText,
 } from 'lucide-react'
 import {
   FoDecisionDesk,
@@ -23,14 +23,7 @@ import {
 
 const SESSION_KEY = 'novaforge_auth_session'
 
-type Tab =
-  | 'fo'
-  | 'history'
-  | 'screener'
-  | 'fii_dii'
-  | 'news'
-  | 'etf'
-  | 'risk'
+type Tab = 'fo' | 'history' | 'screener' | 'fii_dii' | 'news' | 'etf' | 'risk'
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
@@ -44,96 +37,72 @@ export default function App() {
   const [installMsg, setInstallMsg] = useState('')
 
   useEffect(() => {
-    const handler = (e: Event) => {
+    const h = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e)
     }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+    window.addEventListener('beforeinstallprompt', h)
+    return () => window.removeEventListener('beforeinstallprompt', h)
   }, [])
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     if (!username.trim() || !password.trim()) {
-      setAuthError('Enter Terminal ID and Passkey.')
+      setAuthError('Enter ID and passkey')
       return
     }
     localStorage.setItem(SESSION_KEY, 'true')
-    localStorage.setItem('novaforge_trader_id', username.trim())
     setIsAuthenticated(true)
     setAuthError('')
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem(SESSION_KEY)
-    setIsAuthenticated(false)
-  }
-
   const onInstall = async () => {
     if (!deferredPrompt) {
-      setInstallMsg('Browser menu → Install app / Add to Home Screen')
+      setInstallMsg('Use browser: Install app / Add to Home Screen')
       return
     }
     deferredPrompt.prompt()
-    const choice = await deferredPrompt.userChoice
+    await deferredPrompt.userChoice
     setDeferredPrompt(null)
-    setInstallMsg(choice.outcome === 'accepted' ? 'Installing…' : 'Dismissed')
   }
 
   if (!isAuthenticated) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4 font-sans antialiased"
-        style={{
-          background:
-            'radial-gradient(ellipse at top, #3d5a80 0%, #1b3a4b 40%, #0f2027 100%)',
-        }}
-      >
-        <div className="w-full max-w-md rounded-3xl p-8 relative overflow-hidden border-2 border-[#c9a227]/60 shadow-2xl bg-gradient-to-b from-[#2c4a6e] to-[#1a3348]">
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-[#f0d77b] to-transparent" />
-          <div className="text-center space-y-3 mb-7">
-            <div className="text-4xl select-none">🏛️</div>
-            <h1 className="text-2xl font-serif font-black tracking-[0.2em] text-[#f7f0dd]">
-              NOVAFORGE
-            </h1>
-            <p className="text-[11px] tracking-[0.25em] uppercase text-[#e8c547] font-semibold">
-              Royal Decision Palace
-            </p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-sky-100 via-emerald-50 to-amber-50">
+        <div className="w-full max-w-md rounded-[2rem] border-2 border-amber-300/80 bg-white/90 backdrop-blur shadow-2xl shadow-amber-200/50 p-8 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-amber-200/40 blur-2xl" />
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full bg-sky-200/50 blur-2xl" />
+          <div className="relative text-center space-y-2 mb-6">
+            <div className="text-5xl">🌿</div>
+            <h1 className="text-2xl font-serif font-black tracking-[0.2em] text-slate-800">NOVAFORGE</h1>
+            <p className="text-[11px] uppercase tracking-[0.25em] text-amber-700 font-semibold">Wealth Decision Desk</p>
           </div>
-          <form onSubmit={handleLogin} className="space-y-4 text-sm">
+          <form onSubmit={handleLogin} className="relative space-y-4">
             {authError ? (
-              <div className="text-center text-rose-200 text-xs bg-rose-900/30 border border-rose-400/40 rounded-xl py-2">
-                {authError}
-              </div>
+              <p className="text-center text-sm text-rose-600 bg-rose-50 rounded-xl py-2">{authError}</p>
             ) : null}
-            <label className="block text-[#d4c4a8] text-xs font-semibold">
-              <span className="flex items-center gap-1.5 mb-1">
-                <User className="w-3.5 h-3.5 text-[#e8c547]" /> Trader ID
-              </span>
+            <label className="block text-xs font-semibold text-slate-600">
+              <span className="flex items-center gap-1 mb-1"><User className="w-3.5 h-3.5 text-amber-600" /> Trader ID</span>
               <input
-                className="w-full rounded-xl px-3.5 py-2.5 bg-[#0f2433]/80 border border-[#c9a227]/40 text-[#f7f0dd] focus:outline-none focus:border-[#f0d77b]"
+                className="w-full rounded-2xl border border-amber-200 bg-sky-50/50 px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-300"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Your ID"
               />
             </label>
-            <label className="block text-[#d4c4a8] text-xs font-semibold">
-              <span className="flex items-center gap-1.5 mb-1">
-                <Lock className="w-3.5 h-3.5 text-[#e8c547]" /> Passkey
-              </span>
+            <label className="block text-xs font-semibold text-slate-600">
+              <span className="flex items-center gap-1 mb-1"><Lock className="w-3.5 h-3.5 text-amber-600" /> Passkey</span>
               <input
                 type="password"
-                className="w-full rounded-xl px-3.5 py-2.5 bg-[#0f2433]/80 border border-[#c9a227]/40 text-[#f7f0dd] focus:outline-none focus:border-[#f0d77b]"
+                className="w-full rounded-2xl border border-amber-200 bg-sky-50/50 px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-300"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Passkey"
               />
             </label>
             <button
               type="submit"
-              className="w-full py-3 rounded-xl font-bold tracking-wider uppercase text-[#1a2a1a] bg-gradient-to-r from-[#e8c547] via-[#f0d77b] to-[#c9a227] shadow-lg hover:brightness-110"
+              className="w-full py-3 rounded-2xl font-bold text-slate-900 bg-gradient-to-r from-amber-300 via-yellow-200 to-lime-300 shadow-lg shadow-amber-200/60 hover:brightness-105"
             >
-              Enter Palace 🗝️
+              Open Desk
             </button>
           </form>
         </div>
@@ -142,44 +111,37 @@ export default function App() {
   }
 
   const nav: { id: Tab; label: string; icon: typeof Search }[] = [
-    { id: 'fo', label: 'F&O Throne Desk', icon: Atom },
-    { id: 'history', label: 'Royal Report Card', icon: History },
-    { id: 'screener', label: 'Equity Gallery', icon: Search },
-    { id: 'fii_dii', label: 'Treasury Flows', icon: Landmark },
-    { id: 'news', label: 'Court Calendar', icon: Newspaper },
-    { id: 'etf', label: 'Thematic Vaults', icon: Globe },
-    { id: 'risk', label: 'Guard Protocol', icon: ShieldAlert },
+    { id: 'fo', label: 'Trade Desk + Locks', icon: CandlestickChart },
+    { id: 'history', label: 'Report Card Archive', icon: ScrollText },
+    { id: 'screener', label: 'Stock Charts', icon: Search },
+    { id: 'fii_dii', label: 'FII / DII', icon: Landmark },
+    { id: 'news', label: 'Event Calendar', icon: Trees },
+    { id: 'etf', label: 'ETF Ideas', icon: History },
+    { id: 'risk', label: 'Risk Rules', icon: ShieldAlert },
   ]
 
   return (
-    <div
-      className="min-h-screen flex flex-col md:flex-row font-sans antialiased text-[#f7f0dd]"
-      style={{
-        background: 'linear-gradient(165deg, #1b3a4b 0%, #243b55 45%, #2c5364 100%)',
-      }}
-    >
-      <aside className="w-full md:w-64 shrink-0 flex flex-col border-r border-[#c9a227]/25 bg-gradient-to-b from-[#1e3a5f] to-[#152a45]">
-        <div className="p-5 border-b border-[#c9a227]/25">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-sky-50 via-white to-emerald-50 text-slate-800">
+      <aside className="w-full md:w-64 shrink-0 border-r border-amber-200/80 bg-gradient-to-b from-white via-sky-50 to-emerald-50/80 flex flex-col">
+        <div className="p-5 border-b border-amber-200/70">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#e8c547] to-[#f7e7a9] text-[#1a2a1a] flex items-center justify-center text-lg shadow-md">
-              🏛️
-            </div>
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-300 to-lime-300 flex items-center justify-center text-xl shadow-md">N</div>
             <div>
-              <h1 className="font-serif font-black tracking-wider text-[#f7f0dd]">NOVAFORGE</h1>
-              <p className="text-[10px] tracking-widest text-[#e8c547] uppercase">Palace Desk</p>
+              <div className="font-serif font-black tracking-wide text-slate-800">NOVAFORGE</div>
+              <div className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">Alpha Desk</div>
             </div>
           </div>
         </div>
-        <nav className="p-3 space-y-1 flex-1">
+        <nav className="p-3 space-y-1.5 flex-1">
           {nav.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setCurrentTab(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
                 currentTab === item.id
-                  ? 'bg-gradient-to-r from-[#e8c547] to-[#c9a227] text-[#1a2a1a] shadow-md'
-                  : 'text-[#c5d5e0] hover:bg-white/10'
+                  ? 'bg-gradient-to-r from-amber-300 to-lime-300 text-slate-900 shadow-md shadow-amber-200/50'
+                  : 'text-slate-600 hover:bg-white/80 border border-transparent hover:border-amber-100'
               }`}
             >
               <item.icon className="w-4 h-4" />
@@ -187,31 +149,44 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="p-4 border-t border-[#c9a227]/25 space-y-2">
+        <div className="p-4 border-t border-amber-200/70 space-y-2">
           <button
             type="button"
             onClick={() => void onInstall()}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border border-[#c9a227]/50 text-[#e8c547] bg-[#c9a227]/10"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-xs font-bold bg-white border border-amber-300 text-amber-800"
           >
             <Download className="w-4 h-4" /> Install App
           </button>
-          {installMsg ? <p className="text-[10px] text-[#a8c0d0]">{installMsg}</p> : null}
-          <button type="button" onClick={handleLogout} className="text-[11px] text-[#e8c547] hover:underline">
-            Lock palace 🗝️
+          {installMsg ? <p className="text-[10px] text-slate-500">{installMsg}</p> : null}
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem(SESSION_KEY)
+              setIsAuthenticated(false)
+            }}
+            className="text-[11px] text-slate-500 hover:text-amber-800"
+          >
+            Sign out
           </button>
         </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 px-5 flex items-center justify-between border-b border-[#c9a227]/20 bg-[#1e3a5f]/80 backdrop-blur">
-          <span className="text-xs tracking-wide text-[#e8c547] font-semibold">
-            NOVAFORGE · Royal F&O Decision Court
+        <header className="h-14 px-5 flex items-center justify-between border-b border-amber-200/70 bg-white/70 backdrop-blur">
+          <span className="text-xs font-semibold text-slate-600">
+            {currentTab === 'fo' && 'Trade locks · ORB · CALL / PUT'}
+            {currentTab === 'history' && 'Document archive · 5 working days'}
+            {currentTab === 'screener' && 'Charts'}
+            {currentTab === 'fii_dii' && 'Flows'}
+            {currentTab === 'news' && 'Event risk'}
+            {currentTab === 'etf' && 'ETFs'}
+            {currentTab === 'risk' && 'Risk'}
           </span>
-          <span className="text-[11px] px-3 py-1 rounded-full bg-emerald-400/15 border border-emerald-300/40 text-emerald-200">
-            ● Court in session
+          <span className="text-[11px] px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold">
+            Live desk ready
           </span>
         </header>
-        <main className="flex-1 p-5 md:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {currentTab === 'fo' && <FoDecisionDesk />}
             {currentTab === 'history' && <HistoricalReportDesk />}
