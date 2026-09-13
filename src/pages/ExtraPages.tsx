@@ -8,6 +8,8 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Gauge,
+  Clock,
 } from 'lucide-react'
 
 const BRIDGE_URL = String((import.meta as any).env?.VITE_ANGEL_BRIDGE_URL || '').replace(/\/$/, '')
@@ -165,35 +167,118 @@ export const RealTradingViewChart: React.FC<{ symbol: string; height?: number }>
   return <div ref={ref} style={{ height }} className="w-full rounded-2xl overflow-hidden border border-amber-100" />
 }
 
-/** KD's Sovereign Desk — Clean Luxury Badge */
+/** KD's Agent — light-skin king-advisor illustration (CSS, no external face) */
+/** KD's Royal King-Advisor — Custom Vector Persona */
 function AgentGuide({ signal }: { signal: SignalType }) {
   return (
-    <div className={`${windowFrame} p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-center relative overflow-hidden`}>
+    <div className={`${windowFrame} p-5 flex flex-col md:flex-row gap-5 items-center relative overflow-hidden`}>
       <div className="relative shrink-0 flex flex-col items-center">
-        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600 p-0.5 shadow-lg shadow-amber-500/20">
-          <div className="w-full h-full rounded-2xl bg-gradient-to-b from-[#1c1813] to-[#0d0b08] border border-amber-300/40 flex flex-col items-center justify-center p-2 text-center">
-            <span className="text-2xl sm:text-3xl mb-0.5 select-none">👑</span>
-            <span className="text-[10px] font-serif font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-400">
-              KD
-            </span>
-            <span className="text-[8px] font-bold uppercase tracking-widest text-amber-500/90">
-              SOVEREIGN
-            </span>
+        <div className="relative p-2 rounded-3xl bg-gradient-to-b from-amber-200/60 via-amber-50 to-amber-100/80 border-2 border-amber-300 shadow-md">
+          <svg
+            viewBox="0 0 240 320"
+            className="w-32 h-44 md:w-36 md:h-48 drop-shadow-md select-none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="goldMetallic" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fffbeb" />
+                <stop offset="25%" stopColor="#fde047" />
+                <stop offset="50%" stopColor="#eab308" />
+                <stop offset="75%" stopColor="#ca8a04" />
+                <stop offset="100%" stopColor="#854d0e" />
+              </linearGradient>
+              <linearGradient id="royalFabric" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1e1b18" />
+                <stop offset="40%" stopColor="#120f0c" />
+                <stop offset="100%" stopColor="#080705" />
+              </linearGradient>
+              <linearGradient id="crimsonSash" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#f43f5e" />
+                <stop offset="60%" stopColor="#be123c" />
+                <stop offset="100%" stopColor="#881337" />
+              </linearGradient>
+              <linearGradient id="shadesLens" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#1e293b" />
+                <stop offset="50%" stopColor="#0f172a" />
+                <stop offset="100%" stopColor="#020617" />
+              </linearGradient>
+              <radialGradient id="sunGlow" cx="50%" cy="30%" r="60%">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="120" cy="110" r="100" fill="url(#sunGlow)" />
+            <circle cx="120" cy="110" r="85" fill="none" stroke="#eab308" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
+            <path
+              d="M20 320 L35 240 Q60 215 95 208 L120 220 L145 208 Q180 215 205 240 L220 320 Z"
+              fill="url(#royalFabric)"
+              stroke="#ca8a04"
+              strokeWidth="1.5"
+            />
+            <path d="M30 245 Q55 220 85 212 L80 235 Q55 240 30 255 Z" fill="url(#goldMetallic)" />
+            <path d="M210 245 Q185 220 155 212 L160 235 Q185 240 210 255 Z" fill="url(#goldMetallic)" />
+            <path d="M65 210 Q110 240 180 320 L150 320 Q95 250 50 225 Z" fill="url(#crimsonSash)" opacity="0.95" />
+            <path d="M65 210 Q110 240 180 320" fill="none" stroke="url(#goldMetallic)" strokeWidth="2" />
+            <path d="M90 220 Q120 250 150 220" fill="none" stroke="url(#goldMetallic)" strokeWidth="3" />
+            <circle cx="120" cy="242" r="6" fill="#dc2626" stroke="url(#goldMetallic)" strokeWidth="1.5" />
+            <path d="M102 170 L102 215 Q120 222 138 215 L138 170 Z" fill="#d49b6a" />
+            <path
+              d="M80 120 C78 160 92 194 120 194 C148 194 162 160 160 120 C160 85 148 76 120 76 C92 76 80 85 80 120 Z"
+              fill="#e0a97a"
+            />
+            <path d="M110 165 Q120 171 130 165" fill="none" stroke="#8c4e28" strokeWidth="2" strokeLinecap="round" />
+            <path d="M119 135 L117 150 Q120 154 123 150 Z" fill="#c27d4c" />
+            <g>
+              <path d="M112 120 Q120 117 128 120" fill="none" stroke="url(#goldMetallic)" strokeWidth="2.5" />
+              <line x1="110" y1="124" x2="130" y2="124" stroke="url(#goldMetallic)" strokeWidth="1.5" />
+              <path
+                d="M86 116 Q108 116 110 124 L108 138 Q97 148 88 138 Q82 128 86 116 Z"
+                fill="url(#shadesLens)"
+                stroke="url(#goldMetallic)"
+                strokeWidth="2"
+              />
+              <path
+                d="M154 116 Q132 116 130 124 L132 138 Q143 148 152 138 Q158 128 154 116 Z"
+                fill="url(#shadesLens)"
+                stroke="url(#goldMetallic)"
+                strokeWidth="2"
+              />
+              <path d="M90 120 L102 135 L98 137 L87 123 Z" fill="#ffffff" opacity="0.25" />
+              <path d="M134 120 L146 135 L142 137 L131 123 Z" fill="#ffffff" opacity="0.25" />
+            </g>
+            <path d="M118 84 L122 84 L122 104 L118 104 Z" fill="#dc2626" />
+            <path d="M114 92 L126 92" stroke="#facc15" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="120" cy="107" r="2" fill="#facc15" />
+            <path
+              d="M78 112 Q75 88 90 74 Q120 62 150 74 Q165 88 162 112 Q155 86 142 80 Q120 76 98 80 Q85 86 78 112 Z"
+              fill="#171412"
+            />
+            <path
+              d="M84 76 L96 46 L108 62 L120 32 L132 62 L144 46 L156 76 Q120 68 84 76 Z"
+              fill="url(#goldMetallic)"
+              stroke="#78350f"
+              strokeWidth="1.5"
+            />
+            <polygon points="120,48 125,56 120,64 115,56" fill="#ef4444" stroke="#fde047" strokeWidth="1" />
+            <path d="M128 32 Q140 16 154 22 Q145 32 134 32 Z" fill="#171412" />
+            <circle cx="78" cy="142" r="4.5" fill="url(#goldMetallic)" stroke="#854d0e" strokeWidth="1" />
+            <circle cx="162" cy="142" r="4.5" fill="url(#goldMetallic)" stroke="#854d0e" strokeWidth="1" />
+          </svg>
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-0.5 rounded-full bg-amber-400 text-slate-900 font-black text-[9px] uppercase tracking-wider shadow">
+            KD&apos;S SOVEREIGN DESK
           </div>
         </div>
       </div>
-
-      <div className="flex-1 text-center sm:text-left space-y-1">
+      <div className="flex-1 text-center md:text-left space-y-1">
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-700">Guide · levels only</div>
-        <p className="text-sm text-slate-700 leading-relaxed font-medium">
+        <p className="text-sm text-slate-700 leading-relaxed">
           {signal === 'CALL' && 'Price above ORB high — bias CALL. Lock a horizon only if size is small and stop is set.'}
           {signal === 'PUT' && 'Price below ORB low — bias PUT. Lock only with clear invalidation.'}
           {signal === 'WAIT' && 'Inside ORB or no levels — WAIT. Protect capital; no forced trade.'}
         </p>
       </div>
-
       <div
-        className={`px-5 py-3 rounded-2xl text-center min-w-[125px] border-2 font-black text-lg shadow-sm ${
+        className={`px-5 py-3 rounded-2xl text-center min-w-[120px] border-2 font-black text-lg ${
           signal === 'CALL'
             ? 'bg-emerald-100 border-emerald-400 text-emerald-800'
             : signal === 'PUT'
@@ -202,16 +287,17 @@ function AgentGuide({ signal }: { signal: SignalType }) {
         }`}
       >
         {signal === 'CALL' ? (
-          <span className="inline-flex items-center gap-1.5"><TrendingUp className="w-5 h-5" /> CALL</span>
+          <span className="inline-flex items-center gap-1"><TrendingUp className="w-5 h-5" /> CALL</span>
         ) : signal === 'PUT' ? (
-          <span className="inline-flex items-center gap-1.5"><TrendingDown className="w-5 h-5" /> PUT</span>
+          <span className="inline-flex items-center gap-1"><TrendingDown className="w-5 h-5" /> PUT</span>
         ) : (
-          <span className="inline-flex items-center gap-1.5"><Minus className="w-5 h-5" /> WAIT</span>
+          <span className="inline-flex items-center gap-1"><Minus className="w-5 h-5" /> WAIT</span>
         )}
       </div>
     </div>
   )
 }
+
 
 export const HistoricalReportDesk: React.FC = () => {
   const [rows, setRows] = useState(() => pruneWorkingDays(loadJSON<ScorecardRecord[]>(SCORE_KEY, [])))
@@ -324,6 +410,180 @@ export const HistoricalReportDesk: React.FC = () => {
     </div>
   )
 }
+
+
+/** Tactical flow meter — ORB distance + session filter (visual aid, not a second signal engine) */
+export const QuantDeskOverlay: React.FC<{
+  ltp: number | null
+  orbHigh: number
+  orbLow: number
+  symbol: string
+  nowTs?: number
+}> = ({ ltp, orbHigh, orbLow, symbol, nowTs = Date.now() }) => {
+  const hasOrb = !Number.isNaN(orbHigh) && !Number.isNaN(orbLow) && orbHigh > orbLow
+
+  const ist = new Date(nowTs).toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false })
+  const [hh, mm] = ist.split(':').map(Number)
+  const istMins = hh * 60 + mm
+  const m915 = 9 * 60 + 15
+  const m930 = 9 * 60 + 30
+  const m1130 = 11 * 60 + 30
+  const m1300 = 13 * 60
+  const m1445 = 14 * 60 + 45
+  const m1530 = 15 * 60 + 30
+
+  let sessionPhase = 'CLOSED'
+  let sessionLabel = 'Market closed'
+  let safeToTrade = false
+  if (istMins >= m915 && istMins < m1530) {
+    if (istMins < m930) {
+      sessionPhase = 'ORB'
+      sessionLabel = 'ORB forming — wait 9:30'
+      safeToTrade = false
+    } else if (istMins >= m1130 && istMins < m1300) {
+      sessionPhase = 'CHOP'
+      sessionLabel = 'Midday chop — low conviction'
+      safeToTrade = false
+    } else if (istMins >= m1445) {
+      sessionPhase = 'LATE'
+      sessionLabel = 'Late session — no new risk'
+      safeToTrade = false
+    } else {
+      sessionPhase = 'MOMENTUM'
+      sessionLabel = 'Prime momentum window'
+      safeToTrade = true
+    }
+  }
+
+  let score = 0
+  let status = 'STANDSTILL / NO ORB'
+  let statusColor = 'text-amber-600 border-amber-300 bg-amber-50'
+  let needleAngle = 0
+  let callGate = 0
+  let putGate = 0
+  let distanceToCall = 0
+  let distanceToPut = 0
+
+  if (ltp && hasOrb) {
+    const mult = symbol === 'BANKNIFTY' ? 2.5 : 1.0
+    const range = orbHigh - orbLow
+    const buffer = Math.max(6 * mult, range * 0.08)
+    callGate = Number((orbHigh + buffer).toFixed(1))
+    putGate = Number((orbLow - buffer).toFixed(1))
+    distanceToCall = Number(Math.max(0, callGate - ltp).toFixed(1))
+    distanceToPut = Number(Math.max(0, ltp - putGate).toFixed(1))
+
+    if (ltp > callGate) {
+      const surge = ltp - callGate
+      score = Math.min(100, Math.round(25 + (surge / Math.max(range * 0.4, 1)) * 75))
+    } else if (ltp < putGate) {
+      const drop = putGate - ltp
+      score = Math.max(-100, Math.round(-25 - (drop / Math.max(range * 0.4, 1)) * 75))
+    } else {
+      const mid = (orbHigh + orbLow) / 2
+      const rel = (ltp - mid) / Math.max(range / 2, 1)
+      score = Math.round(rel * 18)
+    }
+    needleAngle = (score / 100) * 85
+
+    if (score >= 45) {
+      status = 'STRONG CALL PRESSURE'
+      statusColor = 'text-emerald-700 border-emerald-300 bg-emerald-50'
+    } else if (score <= -45) {
+      status = 'STRONG PUT PRESSURE'
+      statusColor = 'text-rose-700 border-rose-300 bg-rose-50'
+    } else if (score > 18) {
+      status = 'BULLISH BUILDING'
+      statusColor = 'text-emerald-600 border-emerald-200 bg-emerald-50/50'
+    } else if (score < -18) {
+      status = 'BEARISH BUILDING'
+      statusColor = 'text-rose-600 border-rose-200 bg-rose-50/50'
+    } else {
+      status = 'CHOP / INSIDE RANGE'
+      statusColor = 'text-amber-600 border-amber-300 bg-amber-50'
+    }
+  }
+
+  return (
+    <div className="rounded-[1.75rem] border-2 border-amber-300/80 bg-gradient-to-br from-white via-amber-50/30 to-sky-50/50 p-4 sm:p-5 shadow-lg shadow-amber-100/60 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center">
+            <Gauge className="w-4 h-4 text-amber-800" />
+          </div>
+          <div>
+            <div className="text-xs font-serif font-black tracking-wider text-slate-800 uppercase">
+              {symbol} Tactical Flow Meter
+            </div>
+            <div className="text-[10px] text-slate-500 font-medium">ORB distance · session filter · visual only</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border ${
+              safeToTrade
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                : 'bg-amber-50 text-amber-900 border-amber-300'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>{sessionLabel}</span>
+          </div>
+          <div className={`text-xs font-black px-3.5 py-1 rounded-xl border shadow-sm ${statusColor}`}>{status}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-3 text-center space-y-0.5">
+          <div className="text-[10px] uppercase font-bold text-rose-700 flex items-center justify-center gap-1">
+            <TrendingDown className="w-3.5 h-3.5" /> Put gate
+          </div>
+          <div className="text-xl font-black text-rose-800 font-mono">{putGate > 0 ? `< ${putGate}` : 'Set ORB'}</div>
+          <div className="text-[10px] text-slate-500">{ltp && putGate ? `${distanceToPut} pts away` : '—'}</div>
+        </div>
+
+        <div className="flex flex-col items-center justify-center">
+          <svg viewBox="0 0 220 120" className="w-52 select-none overflow-visible">
+            <defs>
+              <linearGradient id="meterArc" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f43f5e" />
+                <stop offset="50%" stopColor="#f59e0b" />
+                <stop offset="100%" stopColor="#10b981" />
+              </linearGradient>
+            </defs>
+            <path d="M 25 105 A 85 85 0 0 1 195 105" fill="none" stroke="#e2e8f0" strokeWidth="16" strokeLinecap="round" />
+            <path d="M 25 105 A 85 85 0 0 1 195 105" fill="none" stroke="url(#meterArc)" strokeWidth="10" strokeLinecap="round" />
+            <text x="25" y="118" fill="#e11d48" fontSize="9" fontWeight="bold" textAnchor="middle">PUT</text>
+            <text x="110" y="50" fill="#b45309" fontSize="8" fontWeight="bold" textAnchor="middle">CHOP</text>
+            <text x="195" y="118" fill="#059669" fontSize="9" fontWeight="bold" textAnchor="middle">CALL</text>
+            <g style={{ transform: `rotate(${needleAngle}deg)`, transformOrigin: '110px 105px' }}>
+              <polygon points="108,105 112,105 111,28 109,28" fill="#1e293b" />
+              <circle cx="110" cy="28" r="2.5" fill="#f59e0b" />
+            </g>
+            <circle cx="110" cy="105" r="9" fill="#0f172a" stroke="#fbbf24" strokeWidth="2" />
+          </svg>
+          <span className="text-[11px] font-mono font-black text-slate-700 bg-white px-3 py-0.5 rounded-full border border-amber-200 shadow-sm mt-1">
+            Flow: {score > 0 ? `+${score}` : score}
+          </span>
+        </div>
+
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3 text-center space-y-0.5">
+          <div className="text-[10px] uppercase font-bold text-emerald-700 flex items-center justify-center gap-1">
+            <TrendingUp className="w-3.5 h-3.5" /> Call gate
+          </div>
+          <div className="text-xl font-black text-emerald-800 font-mono">{callGate > 0 ? `> ${callGate}` : 'Set ORB'}</div>
+          <div className="text-[10px] text-slate-500">{ltp && callGate ? `${distanceToCall} pts away` : '—'}</div>
+        </div>
+      </div>
+      {!safeToTrade && sessionPhase !== 'CLOSED' ? (
+        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Session filter: prefer WAIT / no new locks in this window.
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 
 export const FoDecisionDesk: React.FC = () => {
   const [symbol, setSymbol] = useState<SymbolKey>('NIFTY')
@@ -509,6 +769,7 @@ export const FoDecisionDesk: React.FC = () => {
     } finally {
       evaluating.current = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveLtp, now])
 
   useEffect(() => {
@@ -585,6 +846,7 @@ export const FoDecisionDesk: React.FC = () => {
         setLastAuditAt(t)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveLtp, now, isBridgeOnline])
 
   const handleLockHorizon = (horizon: HorizonKey) => {
@@ -626,6 +888,14 @@ export const FoDecisionDesk: React.FC = () => {
   return (
     <div className="space-y-5">
       <AgentGuide signal={signal} />
+
+      <QuantDeskOverlay
+        ltp={liveLtp}
+        orbHigh={orbHigh}
+        orbLow={orbLow}
+        symbol={symbol}
+        nowTs={now}
+      />
 
       <div className={`${windowFrame} p-4 flex flex-col lg:flex-row gap-4 justify-between`}>
         <div className="flex flex-wrap items-center gap-3">
@@ -696,6 +966,7 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
       </div>
 
+      {/* LOCK PANEL — very visible */}
       <div className={`${windowFrame} overflow-hidden`}>
         <div className="px-4 py-3 bg-gradient-to-r from-amber-100 via-lime-50 to-sky-100 border-b border-amber-200 flex flex-wrap justify-between gap-2">
           <span className="text-sm font-black text-slate-800">🔒 LOCK TRADE · 5 / 10 / 15 / 30 min</span>
