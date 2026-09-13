@@ -166,18 +166,108 @@ export const RealTradingViewChart: React.FC<{ symbol: string; height?: number }>
 }
 
 /** KD's Agent — light-skin king-advisor illustration (CSS, no external face) */
+/** KD's Royal King-Advisor — Custom Vector Persona */
 function AgentGuide({ signal }: { signal: SignalType }) {
   return (
-    <div className={`${windowFrame} p-4 flex flex-col sm:flex-row gap-4 items-center`}>
-      <div className="relative shrink-0">
-        <div className="w-24 h-24 rounded-full bg-gradient-to-b from-[#f5d0b0] via-[#f0c4a0] to-[#e8b890] border-4 border-amber-300 shadow-lg flex items-end justify-center overflow-hidden">
-          <div className="text-5xl leading-none pb-0">🧑‍✈️</div>
-        </div>
-        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[9px] font-black tracking-wider bg-amber-300 text-slate-900 px-2 py-0.5 rounded-full whitespace-nowrap">
-          KD&apos;S AGENT
+    <div className={`${windowFrame} p-5 flex flex-col md:flex-row gap-5 items-center relative overflow-hidden`}>
+      <div className="relative shrink-0 flex flex-col items-center">
+        <div className="relative p-2 rounded-3xl bg-gradient-to-b from-amber-200/60 via-amber-50 to-amber-100/80 border-2 border-amber-300 shadow-md">
+          <svg
+            viewBox="0 0 240 320"
+            className="w-32 h-44 md:w-36 md:h-48 drop-shadow-md select-none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient id="goldMetallic" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#fffbeb" />
+                <stop offset="25%" stopColor="#fde047" />
+                <stop offset="50%" stopColor="#eab308" />
+                <stop offset="75%" stopColor="#ca8a04" />
+                <stop offset="100%" stopColor="#854d0e" />
+              </linearGradient>
+              <linearGradient id="royalFabric" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1e1b18" />
+                <stop offset="40%" stopColor="#120f0c" />
+                <stop offset="100%" stopColor="#080705" />
+              </linearGradient>
+              <linearGradient id="crimsonSash" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#f43f5e" />
+                <stop offset="60%" stopColor="#be123c" />
+                <stop offset="100%" stopColor="#881337" />
+              </linearGradient>
+              <linearGradient id="shadesLens" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#1e293b" />
+                <stop offset="50%" stopColor="#0f172a" />
+                <stop offset="100%" stopColor="#020617" />
+              </linearGradient>
+              <radialGradient id="sunGlow" cx="50%" cy="30%" r="60%">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="120" cy="110" r="100" fill="url(#sunGlow)" />
+            <circle cx="120" cy="110" r="85" fill="none" stroke="#eab308" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
+            <path
+              d="M20 320 L35 240 Q60 215 95 208 L120 220 L145 208 Q180 215 205 240 L220 320 Z"
+              fill="url(#royalFabric)"
+              stroke="#ca8a04"
+              strokeWidth="1.5"
+            />
+            <path d="M30 245 Q55 220 85 212 L80 235 Q55 240 30 255 Z" fill="url(#goldMetallic)" />
+            <path d="M210 245 Q185 220 155 212 L160 235 Q185 240 210 255 Z" fill="url(#goldMetallic)" />
+            <path d="M65 210 Q110 240 180 320 L150 320 Q95 250 50 225 Z" fill="url(#crimsonSash)" opacity="0.95" />
+            <path d="M65 210 Q110 240 180 320" fill="none" stroke="url(#goldMetallic)" strokeWidth="2" />
+            <path d="M90 220 Q120 250 150 220" fill="none" stroke="url(#goldMetallic)" strokeWidth="3" />
+            <circle cx="120" cy="242" r="6" fill="#dc2626" stroke="url(#goldMetallic)" strokeWidth="1.5" />
+            <path d="M102 170 L102 215 Q120 222 138 215 L138 170 Z" fill="#d49b6a" />
+            <path
+              d="M80 120 C78 160 92 194 120 194 C148 194 162 160 160 120 C160 85 148 76 120 76 C92 76 80 85 80 120 Z"
+              fill="#e0a97a"
+            />
+            <path d="M110 165 Q120 171 130 165" fill="none" stroke="#8c4e28" strokeWidth="2" strokeLinecap="round" />
+            <path d="M119 135 L117 150 Q120 154 123 150 Z" fill="#c27d4c" />
+            <g>
+              <path d="M112 120 Q120 117 128 120" fill="none" stroke="url(#goldMetallic)" strokeWidth="2.5" />
+              <line x1="110" y1="124" x2="130" y2="124" stroke="url(#goldMetallic)" strokeWidth="1.5" />
+              <path
+                d="M86 116 Q108 116 110 124 L108 138 Q97 148 88 138 Q82 128 86 116 Z"
+                fill="url(#shadesLens)"
+                stroke="url(#goldMetallic)"
+                strokeWidth="2"
+              />
+              <path
+                d="M154 116 Q132 116 130 124 L132 138 Q143 148 152 138 Q158 128 154 116 Z"
+                fill="url(#shadesLens)"
+                stroke="url(#goldMetallic)"
+                strokeWidth="2"
+              />
+              <path d="M90 120 L102 135 L98 137 L87 123 Z" fill="#ffffff" opacity="0.25" />
+              <path d="M134 120 L146 135 L142 137 L131 123 Z" fill="#ffffff" opacity="0.25" />
+            </g>
+            <path d="M118 84 L122 84 L122 104 L118 104 Z" fill="#dc2626" />
+            <path d="M114 92 L126 92" stroke="#facc15" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="120" cy="107" r="2" fill="#facc15" />
+            <path
+              d="M78 112 Q75 88 90 74 Q120 62 150 74 Q165 88 162 112 Q155 86 142 80 Q120 76 98 80 Q85 86 78 112 Z"
+              fill="#171412"
+            />
+            <path
+              d="M84 76 L96 46 L108 62 L120 32 L132 62 L144 46 L156 76 Q120 68 84 76 Z"
+              fill="url(#goldMetallic)"
+              stroke="#78350f"
+              strokeWidth="1.5"
+            />
+            <polygon points="120,48 125,56 120,64 115,56" fill="#ef4444" stroke="#fde047" strokeWidth="1" />
+            <path d="M128 32 Q140 16 154 22 Q145 32 134 32 Z" fill="#171412" />
+            <circle cx="78" cy="142" r="4.5" fill="url(#goldMetallic)" stroke="#854d0e" strokeWidth="1" />
+            <circle cx="162" cy="142" r="4.5" fill="url(#goldMetallic)" stroke="#854d0e" strokeWidth="1" />
+          </svg>
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap px-3 py-0.5 rounded-full bg-amber-400 text-slate-900 font-black text-[9px] uppercase tracking-wider shadow">
+            KD&apos;S SOVEREIGN DESK
+          </div>
         </div>
       </div>
-      <div className="flex-1 text-center sm:text-left space-y-1">
+      <div className="flex-1 text-center md:text-left space-y-1">
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-700">Guide · levels only</div>
         <p className="text-sm text-slate-700 leading-relaxed">
           {signal === 'CALL' && 'Price above ORB high — bias CALL. Lock a horizon only if size is small and stop is set.'}
@@ -205,6 +295,7 @@ function AgentGuide({ signal }: { signal: SignalType }) {
     </div>
   )
 }
+
 
 export const HistoricalReportDesk: React.FC = () => {
   const [rows, setRows] = useState(() => pruneWorkingDays(loadJSON<ScorecardRecord[]>(SCORE_KEY, [])))
