@@ -71,6 +71,7 @@ interface ScorecardRecord {
   lockedAt: number
   resolvedAt: number
   dayKey: string
+  sessionPhase?: SessionPhase | 'UNKNOWN'
 }
 
 interface AuditPending {
@@ -132,6 +133,42 @@ function loadWeights(): Weights {
   return loadJSON(WEIGHTS_KEY, { requireStrongerBreak: 0, widenStop: 0, preferWaitOnChop: 0 })
 }
 
+
+function requestNotifyPermission() {
+  if (typeof window === 'undefined' || !('Notification' in window)) return
+  if (Notification.permission === 'default') {
+    void Notification.requestPermission()
+  }
+}
+
+function notifyTradeSignal(signal: 'CALL' | 'PUT', symbol: string, ltp: number) {
+  const title = `Novaforge · ${signal} · ${symbol}`
+  const body = `LTP ${ltp.toFixed(1)} · confirmed break · open desk to LOCK`
+  try {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, tag: `nf-${symbol}-${signal}` })
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const o = ctx.createOscillator()
+    const g = ctx.createGain()
+    o.connect(g)
+    g.connect(ctx.destination)
+    o.frequency.value = signal === 'CALL' ? 880 : 440
+    g.gain.value = 0.08
+    o.start()
+    setTimeout(() => {
+      o.stop()
+      void ctx.close()
+    }, 180)
+  } catch {
+    /* ignore */
+  }
+}
+
 function bumpWeight(reason: FailReason) {
   const w = loadWeights()
   if (reason === 'CHOP' || reason === 'NO_BREAKOUT') w.preferWaitOnChop = Math.min(5, w.preferWaitOnChop + 1)
@@ -140,28 +177,42 @@ function bumpWeight(reason: FailReason) {
   localStorage.setItem(WEIGHTS_KEY, JSON.stringify(w))
 }
 
-function getSessionPhase(nowTs = Date.now()): SessionPhase {
+function getSessionInfo(nowTs = Date.now()) {
   const ist = new Date(nowTs).toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false })
   const [hh, mm] = ist.split(':').map(Number)
   const mins = hh * 60 + mm
-  if (mins < 9 * 60 + 15 || mins >= 15 * 60 + 30) return 'CLOSED'
-  if (mins < 9 * 60 + 30) return 'ORB'
-  if (mins >= 11 * 60 + 30 && mins < 13 * 60) return 'CHOP'
-  if (mins >= 14 * 60 + 45) return 'LATE'
-  if (mins < 9 * 60 + 15) return 'PREOPEN'
-  return 'MOMENTUM'
+  let phase: SessionPhase = 'CLOSED'
+  let label = 'Market closed'
+  let safeToTrade = false
+  if (mins >= 9 * 60 + 15 && mins < 15 * 60 + 30) {
+    if (mins < 9 * 60 + 30) {
+      phase = 'ORB'
+      label = 'ORB forming — wait till 9:30'
+    } else if (mins >= 11 * 60 + 30 && mins < 13 * 60) {
+      phase = 'CHOP'
+      label = 'Midday chop — low conviction'
+    } else if (mins >= 14 * 60 + 45) {
+      phase = 'LATE'
+      label = 'Late session — no new risk'
+    } else {
+      phase = 'MOMENTUM'
+      label = 'Prime window'
+      safeToTrade = true
+    }
+  } else if (mins < 9 * 60 + 15) {
+    phase = 'PREOPEN'
+    label = 'Pre-open'
+  }
+  // Do not edit ORB while range is still forming
+  const orbEditable = phase !== 'ORB'
+  return { phase, label, safeToTrade, orbEditable, mins }
 }
 
-function sessionLabel(phase: SessionPhase) {
-  const map: Record<SessionPhase, string> = {
-    PREOPEN: 'Pre-open',
-    ORB: 'ORB forming (no new locks)',
-    MOMENTUM: 'Active session',
-    CHOP: 'Midday chop (low conviction)',
-    LATE: 'Late session (no new locks)',
-    CLOSED: 'Market closed',
-  }
-  return map[phase]
+function rollingStdev(samples: number[]): number {
+  if (samples.length < 5) return 0
+  const mean = samples.reduce((a, b) => a + b, 0) / samples.length
+  const variance = samples.reduce((a, b) => a + (b - mean) ** 2, 0) / samples.length
+  return Math.sqrt(variance)
 }
 
 function symbolMult(symbol: SymbolKey) {
@@ -318,6 +369,7 @@ export const HistoricalReportDesk: React.FC = () => {
                       <th className="p-2">Exit</th>
                       <th className="p-2">Pts</th>
                       <th className="p-2">Result</th>
+                      <th className="p-2">Phase</th>
                       <th className="p-2">Reason</th>
                     </tr>
                   </thead>
@@ -362,6 +414,7 @@ export const HistoricalReportDesk: React.FC = () => {
                         >
                           {r.status}
                         </td>
+                        <td className="p-2 text-slate-500">{r.sessionPhase || '—'}</td>
                         <td className="p-2 text-slate-600">
                           {r.status === 'MISS' ? r.failReason : r.note}
                         </td>
@@ -409,6 +462,17 @@ export const FoDecisionDesk: React.FC = () => {
     BANKNIFTY: { above: 0, below: 0 },
   })
   const lastFetchOk = useRef(0)
+  const ltpHistoryRef = useRef<Record<SymbolKey, number[]>>({
+    NIFTY: [],
+    SENSEX: [],
+    BANKNIFTY: [],
+  })
+  const [allowOffSessionLock, setAllowOffSessionLock] = useState(false)
+  const prevSignalRef = useRef<SignalType>('WAIT')
+  const [notifyOn, setNotifyOn] = useState(
+    () => typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted',
+  )
+
 
   useEffect(() => {
     localStorage.setItem(ORB_KEY, JSON.stringify(orbInputs))
@@ -484,17 +548,26 @@ export const FoDecisionDesk: React.FC = () => {
   }, [now, isBridgeOnline])
 
   const liveLtp = prices[symbol]
+  useEffect(() => {
+    if (liveLtp == null || liveLtp <= 0) return
+    const arr = ltpHistoryRef.current[symbol]
+    arr.push(liveLtp)
+    if (arr.length > 40) arr.shift()
+  }, [liveLtp, symbol])
   const currentOrb = orbInputs[symbol]
   const orbHigh = parseFloat(currentOrb.high)
   const orbLow = parseFloat(currentOrb.low)
   const hasOrb =
     !Number.isNaN(orbHigh) && !Number.isNaN(orbLow) && orbHigh > orbLow && orbHigh - orbLow >= MIN_ORB_WIDTH
-  const phase = getSessionPhase(now)
+  const session = getSessionInfo(now)
+  const phase = session.phase
   const weights = loadWeights()
   const mult = symbolMult(symbol)
   const range = hasOrb ? orbHigh - orbLow : 0
+  const vol = rollingStdev(ltpHistoryRef.current[symbol] || [])
+  const volBuffer = vol > 0 ? Math.min(vol * 0.35, 25 * mult) : 0
   const buffer = hasOrb
-    ? Math.max(6 * mult, range * 0.08) + (weights.requireStrongerBreak > 2 ? 4 * mult : 0)
+    ? Math.max(6 * mult, range * 0.08, volBuffer) + (weights.requireStrongerBreak > 2 ? 4 * mult : 0)
     : 0
 
   // Update confirmation streaks when price changes
@@ -524,11 +597,25 @@ export const FoDecisionDesk: React.FC = () => {
   }
 
   const signal = deriveSignal()
+
+  // Alert when WAIT → CALL/PUT (tab must stay open)
+  useEffect(() => {
+    const prev = prevSignalRef.current
+    if (prev === 'WAIT' && (signal === 'CALL' || signal === 'PUT') && liveLtp != null) {
+      notifyTradeSignal(signal, symbol, liveLtp)
+      document.title = `${signal} · ${symbol} · Novaforge`
+    } else if (signal === 'WAIT') {
+      document.title = 'Novaforge — Decision Desk'
+    }
+    prevSignalRef.current = signal
+  }, [signal, symbol, liveLtp])
+
+  const sessionAllowsLock =
+    session.safeToTrade ||
+    allowOffSessionLock ||
+    (phase === 'CHOP' && weights.preferWaitOnChop < 4)
   const canLock =
-    isBridgeOnline &&
-    liveLtp != null &&
-    signal !== 'WAIT' &&
-    (phase === 'MOMENTUM' || (phase === 'CHOP' && weights.preferWaitOnChop < 4))
+    isBridgeOnline && liveLtp != null && signal !== 'WAIT' && sessionAllowsLock
 
   const pushScore = useCallback((row: ScorecardRecord) => {
     setScorecard((prev) => pruneWorkingDays([row, ...prev]).slice(0, 500))
@@ -633,6 +720,7 @@ export const FoDecisionDesk: React.FC = () => {
             lockedAt: lock.lockedAt,
             resolvedAt: t,
             dayKey: istDayKey(lock.lockedAt),
+            sessionPhase: phase,
           })
         } else {
           remaining[key] = lock
@@ -730,8 +818,20 @@ export const FoDecisionDesk: React.FC = () => {
   }, [liveLtp, isBridgeOnline, symbol, now, prices, phase, signal, pushScore, audits])
 
   const handleLock = (horizon: HorizonKey) => {
-    if (!liveLtp || !canLock) {
-      setErr('Cannot lock: need live LTP + CALL/PUT in allowed session.')
+    if (!liveLtp || !isBridgeOnline) {
+      setErr('Need LIVE price — bridge offline or stale.')
+      return
+    }
+    if (signal === 'WAIT') {
+      setErr('WAIT — set ORB and wait for a confirmed break past the gates.')
+      return
+    }
+    if (!sessionAllowsLock) {
+      setErr(`Session: ${session.label} — enable override below only if you accept extra risk.`)
+      return
+    }
+    if (!canLock) {
+      setErr('Cannot lock right now.')
       return
     }
     const rule = HORIZON_RULES[horizon]
@@ -773,7 +873,21 @@ export const FoDecisionDesk: React.FC = () => {
             {signal === 'PUT' && 'Buffered break below ORB low · PUT bias'}
             {signal === 'WAIT' && 'Inside range, unconfirmed, or blocked session · WAIT'}
           </p>
-          <div className="text-[11px] text-slate-500 mt-1">{sessionLabel(phase)}</div>
+          <div className="text-[11px] text-slate-500 mt-1">{session.label}</div>
+          <button
+            type="button"
+            className="mt-2 text-[11px] font-bold px-3 py-1 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+            onClick={() => {
+              requestNotifyPermission()
+              setNotifyOn(
+                typeof window !== 'undefined' &&
+                  'Notification' in window &&
+                  Notification.permission === 'granted',
+              )
+            }}
+          >
+            {notifyOn ? 'Alerts on · browser notify + beep' : 'Enable trade alerts'}
+          </button>
         </div>
         <div
           className={`px-5 py-3 rounded-xl border-2 font-black text-lg min-w-[110px] text-center ${
@@ -857,10 +971,11 @@ export const FoDecisionDesk: React.FC = () => {
             type="number"
             className="mt-1 w-full rounded-lg border border-emerald-200 bg-emerald-50/40 px-2 py-1.5 text-sm font-bold text-emerald-900"
             value={currentOrb.high}
+            disabled={!session.orbEditable}
             onChange={(e) =>
               setOrbInputs((p) => ({ ...p, [symbol]: { ...p[symbol], high: e.target.value } }))
             }
-            placeholder="After 9:30"
+            placeholder={session.orbEditable ? 'After 9:30' : 'Forming…'}
           />
         </div>
         <div className={`${card} p-3`}>
@@ -869,10 +984,11 @@ export const FoDecisionDesk: React.FC = () => {
             type="number"
             className="mt-1 w-full rounded-lg border border-rose-200 bg-rose-50/40 px-2 py-1.5 text-sm font-bold text-rose-900"
             value={currentOrb.low}
+            disabled={!session.orbEditable}
             onChange={(e) =>
               setOrbInputs((p) => ({ ...p, [symbol]: { ...p[symbol], low: e.target.value } }))
             }
-            placeholder="After 9:30"
+            placeholder={session.orbEditable ? 'After 9:30' : 'Forming…'}
           />
         </div>
         <div className={`${card} p-3`}>
@@ -898,6 +1014,20 @@ export const FoDecisionDesk: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {!session.safeToTrade && phase !== 'CLOSED' ? (
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex flex-wrap items-center gap-3">
+          <span>{session.label} — new locks blocked by default.</span>
+          <label className="inline-flex items-center gap-1.5 font-semibold cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowOffSessionLock}
+              onChange={(e) => setAllowOffSessionLock(e.target.checked)}
+            />
+            Override (extra risk)
+          </label>
+        </div>
+      ) : null}
 
       {/* Locks */}
       <div className={`${frame} overflow-hidden`}>
