@@ -222,10 +222,12 @@ function symbolMult(symbol: SymbolKey) {
 }
 
 function tvSymbol(symbol: string) {
-  if (symbol.includes('BANKNIFTY')) return 'NSE:BANKNIFTY'
-  if (symbol.includes('SENSEX')) return 'BSE:SENSEX'
+  const s = symbol.toUpperCase().replace(/^NSE:/, '').replace(/^BSE:/, '')
+  if (s === 'BANKNIFTY' || s.includes('BANKNIFTY')) return 'NSE:BANKNIFTY'
+  if (s === 'SENSEX' || s.includes('SENSEX')) return 'BSE:SENSEX'
+  if (s === 'NIFTY' || s === 'NIFTY50') return 'NSE:NIFTY'
   if (symbol.includes(':')) return symbol
-  return `NSE:${symbol}`
+  return `NSE:${s}`
 }
 
 function computeMetrics(rows: ScorecardRecord[]) {
@@ -257,12 +259,19 @@ export const RealTradingViewChart: React.FC<{ symbol: string; height?: number }>
     const el = ref.current
     if (!el) return
     el.innerHTML = ''
+    const wrap = document.createElement('div')
+    wrap.className = 'tradingview-widget-container'
+    wrap.style.height = `${height}px`
+    wrap.style.width = '100%'
     const box = document.createElement('div')
-    box.style.height = `${height}px`
+    box.className = 'tradingview-widget-container__widget'
+    box.style.height = '100%'
     box.style.width = '100%'
-    el.appendChild(box)
+    wrap.appendChild(box)
+    el.appendChild(wrap)
     const script = document.createElement('script')
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
+    script.type = 'text/javascript'
     script.async = true
     script.innerHTML = JSON.stringify({
       autosize: true,
@@ -273,13 +282,102 @@ export const RealTradingViewChart: React.FC<{ symbol: string; height?: number }>
       style: '1',
       locale: 'en',
       enable_publishing: false,
+      hide_top_toolbar: false,
+      allow_symbol_change: false,
+      save_image: false,
+      calendar: false,
+      support_host: 'https://www.tradingview.com',
     })
-    el.appendChild(script)
+    wrap.appendChild(script)
     return () => {
       el.innerHTML = ''
     }
   }, [symbol, height])
-  return <div ref={ref} style={{ height }} className="w-full rounded-xl overflow-hidden border border-slate-200" />
+  return (
+    <div className="w-full rounded-xl overflow-hidden border border-slate-200 bg-white">
+      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+        Live chart · {tvSymbol(symbol)}
+      </div>
+      <div ref={ref} style={{ height }} className="w-full" />
+    </div>
+  )
+}
+
+/** Path sketch: live LTP + ORB + predicted target/stop (our rules — not TV drawing API) */
+export const PredictionPathPanel: React.FC<{
+  ltp: number | null
+  orbHigh: number
+  orbLow: number
+  hasOrb: boolean
+  side: SignalType
+  target: number | null
+  stop: number | null
+  symbol: string
+}> = ({ ltp, orbHigh, orbLow, hasOrb, side, target, stop, symbol }) => {
+  const levels = [ltp, orbHigh, orbLow, target, stop].filter((x): x is number => x != null && Number.isFinite(x))
+  if (!ltp || levels.length < 2) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        Prediction path needs LIVE LTP and ORB (and optional LOCK target). Fill ORB high/low first.
+      </div>
+    )
+  }
+  const min = Math.min(...levels) - 15
+  const max = Math.max(...levels) + 15
+  const span = max - min || 1
+  const y = (v: number) => 12 + (1 - (v - min) / span) * 160
+  const predEnd = target != null && side !== 'WAIT' ? target : ltp
+  const color = side === 'CALL' ? '#059669' : side === 'PUT' ? '#e11d48' : '#94a3b8'
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 flex justify-between">
+        <span>Direction path · {symbol}</span>
+        <span className="normal-case font-semibold text-slate-600">
+          {side === 'WAIT' ? 'No active bias — path flat' : `Bias ${side} → target`}
+        </span>
+      </div>
+      <svg viewBox="0 0 400 200" className="w-full h-48">
+        {hasOrb ? (
+          <>
+            <line x1="40" y1={y(orbHigh)} x2="380" y2={y(orbHigh)} stroke="#10b981" strokeDasharray="4 3" strokeWidth="1" />
+            <text x="42" y={y(orbHigh) - 4} fill="#059669" fontSize="9">ORB H {orbHigh.toFixed(0)}</text>
+            <line x1="40" y1={y(orbLow)} x2="380" y2={y(orbLow)} stroke="#f43f5e" strokeDasharray="4 3" strokeWidth="1" />
+            <text x="42" y={y(orbLow) + 12} fill="#e11d48" fontSize="9">ORB L {orbLow.toFixed(0)}</text>
+          </>
+        ) : null}
+        {stop != null ? (
+          <>
+            <line x1="40" y1={y(stop)} x2="380" y2={y(stop)} stroke="#fb7185" strokeWidth="1.5" />
+            <text x="300" y={y(stop) - 4} fill="#e11d48" fontSize="9">Stop {stop.toFixed(0)}</text>
+          </>
+        ) : null}
+        {target != null && side !== 'WAIT' ? (
+          <>
+            <line x1="40" y1={y(target)} x2="380" y2={y(target)} stroke="#34d399" strokeWidth="1.5" />
+            <text x="300" y={y(target) - 4} fill="#059669" fontSize="9">Target {target.toFixed(0)}</text>
+          </>
+        ) : null}
+        {/* Live → predicted */}
+        <circle cx="80" cy={y(ltp)} r="5" fill="#0f172a" />
+        <text x="90" y={y(ltp) - 8} fill="#0f172a" fontSize="10" fontWeight="700">
+          LTP {ltp.toFixed(1)}
+        </text>
+        <line
+          x1="80"
+          y1={y(ltp)}
+          x2="320"
+          y2={y(predEnd)}
+          stroke={color}
+          strokeWidth="3"
+          strokeDasharray={side === 'WAIT' ? '6 4' : '0'}
+        />
+        <circle cx="320" cy={y(predEnd)} r="5" fill={color} />
+        <text x="200" y="195" fill="#64748b" fontSize="9" textAnchor="middle">
+          Dashed ORB = range · Solid line = our rule path (not guaranteed)
+        </text>
+      </svg>
+    </div>
+  )
 }
 
 export const HistoricalReportDesk: React.FC = () => {
@@ -468,6 +566,8 @@ export const FoDecisionDesk: React.FC = () => {
     BANKNIFTY: [],
   })
   const [allowOffSessionLock, setAllowOffSessionLock] = useState(false)
+  /** AUTO = follow signal; CALL/PUT = user forces side anytime live LTP exists */
+  const [lockMode, setLockMode] = useState<'AUTO' | 'CALL' | 'PUT'>('AUTO')
   const prevSignalRef = useRef<SignalType>('WAIT')
   const [notifyOn, setNotifyOn] = useState(
     () => typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted',
@@ -597,6 +697,8 @@ export const FoDecisionDesk: React.FC = () => {
   }
 
   const signal = deriveSignal()
+  const effectiveSide: SignalType =
+    lockMode === 'AUTO' ? signal : lockMode
 
   // Alert when WAIT → CALL/PUT (tab must stay open)
   useEffect(() => {
@@ -613,9 +715,13 @@ export const FoDecisionDesk: React.FC = () => {
   const sessionAllowsLock =
     session.safeToTrade ||
     allowOffSessionLock ||
-    (phase === 'CHOP' && weights.preferWaitOnChop < 4)
+    phase === 'CHOP' ||
+    phase === 'MOMENTUM'
+  // Manual CALL/PUT: lock anytime with LIVE price. AUTO: needs confirmed signal.
   const canLock =
-    isBridgeOnline && liveLtp != null && signal !== 'WAIT' && sessionAllowsLock
+    isBridgeOnline &&
+    liveLtp != null &&
+    (lockMode !== 'AUTO' ? true : signal !== 'WAIT' && sessionAllowsLock)
 
   const pushScore = useCallback((row: ScorecardRecord) => {
     setScorecard((prev) => pruneWorkingDays([row, ...prev]).slice(0, 500))
@@ -822,24 +928,17 @@ export const FoDecisionDesk: React.FC = () => {
       setErr('Need LIVE price — bridge offline or stale.')
       return
     }
-    if (signal === 'WAIT') {
-      setErr('WAIT — set ORB and wait for a confirmed break past the gates.')
-      return
-    }
-    if (!sessionAllowsLock) {
-      setErr(`Session: ${session.label} — enable override below only if you accept extra risk.`)
-      return
-    }
-    if (!canLock) {
-      setErr('Cannot lock right now.')
+    const side = lockMode === 'AUTO' ? signal : lockMode
+    if (side === 'WAIT') {
+      setErr('AUTO mode is WAIT — pick CALL or PUT above to lock anytime, or wait for a break.')
       return
     }
     const rule = HORIZON_RULES[horizon]
     const stopExtra = weights.widenStop > 2 ? 1.15 : 1
     const td = rule.targetPts * mult
     const sd = rule.stopPts * mult * stopExtra
-    const targetPrice = signal === 'CALL' ? liveLtp + td : liveLtp - td
-    const stopPrice = signal === 'CALL' ? liveLtp - sd : liveLtp + sd
+    const targetPrice = side === 'CALL' ? liveLtp + td : liveLtp - td
+    const stopPrice = side === 'CALL' ? liveLtp - sd : liveLtp + sd
     setActiveLocks((prev) => ({
       ...prev,
       [`${symbol}_${horizon}`]: {
@@ -849,12 +948,12 @@ export const FoDecisionDesk: React.FC = () => {
         entryPrice: liveLtp,
         targetPrice: Number(targetPrice.toFixed(2)),
         stopPrice: Number(stopPrice.toFixed(2)),
-        direction: signal as 'CALL' | 'PUT',
+        direction: side as 'CALL' | 'PUT',
         lockedAt: Date.now(),
         expiresAt: Date.now() + rule.durationMs,
       },
     }))
-    setErr('')
+    setErr(lockMode !== 'AUTO' && signal === 'WAIT' ? 'Locked on manual side (signal still WAIT).' : '')
   }
 
   const metrics = computeMetrics(scorecard)
@@ -1029,6 +1128,35 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
       ) : null}
 
+      
+      {/* Manual side — lock anytime when LIVE */}
+      <div className={`${card} p-3 flex flex-wrap items-center gap-2`}>
+        <span className="text-[10px] font-bold uppercase text-slate-500">Lock side</span>
+        {(['AUTO', 'CALL', 'PUT'] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setLockMode(m)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-black border ${
+              lockMode === m
+                ? m === 'CALL'
+                  ? 'bg-emerald-600 text-white border-emerald-700'
+                  : m === 'PUT'
+                    ? 'bg-rose-600 text-white border-rose-700'
+                    : 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-600 border-slate-200'
+            }`}
+          >
+            {m}
+          </button>
+        ))}
+        <span className="text-[11px] text-slate-500">
+          {lockMode === 'AUTO'
+            ? 'Follows confirmed break (WAIT blocks lock).'
+            : `Manual ${lockMode} — LOCK enabled whenever LIVE.`}
+        </span>
+      </div>
+
       {/* Locks */}
       <div className={`${frame} overflow-hidden`}>
         <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-800">
@@ -1041,13 +1169,14 @@ export const FoDecisionDesk: React.FC = () => {
             const td = rule.targetPts * mult
             const sd = rule.stopPts * mult * stopExtra
             const lock = activeLocks[`${symbol}_${hz}`]
+            const sideForCard = lockMode === 'AUTO' ? signal : lockMode
             const tgt =
-              liveLtp && signal !== 'WAIT'
-                ? (signal === 'CALL' ? liveLtp + td : liveLtp - td).toFixed(1)
+              liveLtp && sideForCard !== 'WAIT'
+                ? (sideForCard === 'CALL' ? liveLtp + td : liveLtp - td).toFixed(1)
                 : '—'
             const stp =
-              liveLtp && signal !== 'WAIT'
-                ? (signal === 'CALL' ? liveLtp - sd : liveLtp + sd).toFixed(1)
+              liveLtp && sideForCard !== 'WAIT'
+                ? (sideForCard === 'CALL' ? liveLtp - sd : liveLtp + sd).toFixed(1)
                 : '—'
             return (
               <div key={hz} className="p-4 space-y-2">
@@ -1055,14 +1184,14 @@ export const FoDecisionDesk: React.FC = () => {
                   <span>{hz}</span>
                   <span
                     className={
-                      signal === 'CALL'
+                      (lockMode === 'AUTO' ? signal : lockMode) === 'CALL'
                         ? 'text-emerald-700'
-                        : signal === 'PUT'
+                        : (lockMode === 'AUTO' ? signal : lockMode) === 'PUT'
                           ? 'text-rose-700'
                           : 'text-amber-700'
                     }
                   >
-                    {signal}
+                    {lockMode === 'AUTO' ? signal : lockMode}
                   </span>
                 </div>
                 {lock ? (
@@ -1103,8 +1232,37 @@ export const FoDecisionDesk: React.FC = () => {
         </div>
       </div>
 
-      <div className={card + ' p-2'}>
-        <RealTradingViewChart symbol={symbol} height={400} />
+      {!hasOrb ? (
+        <div className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 font-medium">
+          Fill <strong>ORB HIGH</strong> and <strong>ORB LOW</strong> (9:15–9:30 range) — without this, signal stays WAIT and AUTO locks stay off.
+        </div>
+      ) : null}
+
+      {/* Live chart + our prediction path */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <RealTradingViewChart symbol={symbol} height={360} />
+        <PredictionPathPanel
+          ltp={liveLtp}
+          orbHigh={orbHigh}
+          orbLow={orbLow}
+          hasOrb={hasOrb}
+          side={lockMode === 'AUTO' ? signal : lockMode}
+          target={
+            liveLtp && (lockMode === 'AUTO' ? signal : lockMode) !== 'WAIT'
+              ? (lockMode === 'AUTO' ? signal : lockMode) === 'CALL'
+                ? liveLtp + HORIZON_RULES['15m'].targetPts * mult
+                : liveLtp - HORIZON_RULES['15m'].targetPts * mult
+              : null
+          }
+          stop={
+            liveLtp && (lockMode === 'AUTO' ? signal : lockMode) !== 'WAIT'
+              ? (lockMode === 'AUTO' ? signal : lockMode) === 'CALL'
+                ? liveLtp - HORIZON_RULES['15m'].stopPts * mult
+                : liveLtp + HORIZON_RULES['15m'].stopPts * mult
+              : null
+          }
+          symbol={symbol}
+        />
       </div>
     </div>
   )
