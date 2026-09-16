@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: novaforge-angel-bridge
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npx tsx src/server/index.ts
+    envVars:
+      - key: ANGEL_API_KEY
+        sync: false
+      - key: ANGEL_CLIENT_CODE
+        sync: false
+      - key: ANGEL_PASSWORD
+        sync: false
+      - key: ANGEL_TOTP_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://novaforges.in

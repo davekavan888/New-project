@@ -1,0 +1,41 @@
+NOVAFORGE ANGEL BRIDGE — deploy after Railway trial expired
+
+You need this running for LIVE LTP on novaforges.in
+
+=== A) Render.com (free tier — may sleep when idle) ===
+1. Push this folder to a GitHub repo (or subfolder angel-bridge in New-project)
+2. Render → New → Web Service → connect repo
+3. Root directory: angel-bridge (if inside main repo)
+4. Build: npm install
+5. Start: npx tsx src/server/index.ts
+6. Add env vars (see below)
+7. After deploy, open https://YOUR-SERVICE.onrender.com/health
+8. Vercel project → Settings → Environment Variables:
+   VITE_ANGEL_BRIDGE_URL = https://YOUR-SERVICE.onrender.com
+   (no trailing slash)
+9. Redeploy Vercel
+
+=== B) Railway Hobby (~$5/mo — always on) ===
+1. Upgrade Railway → New project → GitHub → select repo
+2. Root: angel-bridge folder
+3. Same env vars
+4. Public URL → VITE_ANGEL_BRIDGE_URL on Vercel
+
+=== ENV VARS (required) ===
+ANGEL_API_KEY          = from Angel SmartAPI portal
+ANGEL_CLIENT_CODE     = your client id
+ANGEL_PASSWORD        = login password / MPIN as used in API
+ANGEL_TOTP_SECRET     = base32 secret from Enable TOTP (not the 6-digit code)
+CORS_ORIGIN           = https://novaforges.in
+
+Optional:
+INDEX_NIFTY_TOKEN=99926000
+INDEX_BANK_TOKEN=99926009
+INDEX_SENSEX_TOKEN=99926037
+LTP_POLL_MS=3000
+
+=== Test ===
+GET /health   → { ok: true, ... }
+GET /snapshot → { status: "live", ltp: { NIFTY, BANKNIFTY, SENSEX }, ... }
+
+Never put Angel passwords in frontend or public GitHub.
